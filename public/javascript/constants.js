@@ -1,7 +1,7 @@
-export let EarthMass = 5972190e18;
-export let EarthRadius = 6371 * 1000;
-export let G = 6.673e-11;
-export let MetersPerPixel = EarthRadius / 10;
+export const EarthMass = 5972190e18;
+export const EarthRadius = 6371 * 1000;
+export const G = 6.673e-11;
+export const MetersPerPixel = EarthRadius / 10;
 
 export function toReal(pixels) {
     return pixels * MetersPerPixel;
