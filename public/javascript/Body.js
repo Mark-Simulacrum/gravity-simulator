@@ -31,14 +31,6 @@ Body.prototype.update = function() {
     let deltaX       = (vector) => distance(vector) * Math.cos(vector.direction);
     let deltaY       = (vector) => distance(vector) * Math.sin(vector.direction);
 
-    let drawVec = vec => {
-        vec = new Vector(vec.length * Math.pow(10, 6), vec.direction);
-        canvasDraw.drawVector(this.game.screen, this.center, {
-            x: this.center.x + vec.getDeltaX(),
-            y: this.center.y + vec.getDeltaY()
-        });
-    };
-
     let vectors = this.game.sources.map(source => {
         let force = this.G * source.G / Math.pow(pointUtils.distanceBetween(this.center, source.center), 2);
 
@@ -55,8 +47,6 @@ Body.prototype.update = function() {
 
     let finalDeltaX = deltaX(finalVector);
     let finalDeltaY = deltaY(finalVector);
-    // vectors.forEach(vec => drawVec(vec));
-    // drawVec(finalVector);
 
     this.isAlive = !pointUtils.willCollide(this.center, finalDeltaX, finalDeltaY, this.game.sources, source => {
         if (this.isManual) return;
