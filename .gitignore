@@ -1,3 +1,6 @@
 node_modules
 .node_modules
 /output
+public/built
+public/built/bundle.js
+public/built/bundle.js.map
