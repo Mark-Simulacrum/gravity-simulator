@@ -7,8 +7,7 @@ import * as canvasDraw from "./canvasDraw";
 import presenceTracker from "./presenceTracker";
 import Attractor from "./Attractor";
 import Body from "./Body";
-
-const universalGravitationalConstant = 6.673 * Math.pow(10, -11);
+import * as constants from "./constants";
 
 function uniquePairs(array) {
     let pairs = [];
@@ -37,26 +36,34 @@ function Game() {
     this.screen = screen;
     screen.font = "20pt Arial";
 
+    canvasDraw.setScreen(this.screen);
+
     // Note down the dimensions of the canvas.  These are used to
     // place game bodies.
     this.size = { x: canvas.width, y: canvas.height };
+    this.realSize = { x: constants.toReal(this.size.x), y: constants.toReal(this.size.y) };
 
     this.deadBodies = [];
     this.bodies = [];
-    this.sources = [];
     this.attractors = [];
 
-    let fudgePercent = 0;
-    let fFX = () => { let random = this.size.x * fudgePercent; return randomNum(-random, +random); };
-    let fFY = () => { let random = this.size.y * fudgePercent; return randomNum(-random, +random); };
-    this.sources.push(new Attractor(this, { x: this.size.x / 4 + fFX(), y: this.size.y / 4 + fFY() }));
-    this.sources.push(new Attractor(this, {x: this.size.x / 4 * 3 + fFX(), y: this.size.y / 4 + fFY()}));
-    this.sources.push(new Attractor(this, {x: this.size.x / 4 + fFX(), y: this.size.y / 4 * 3 + fFY()}));
-    this.sources.push(new Attractor(this, {x: this.size.x / 4 * 3 + fFX(), y: this.size.y / 4 * 3 + fFY()}));
+    this.attractors.push(new Attractor(this, {
+        x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4) // left left top
+    }));
+    this.attractors.push(new Attractor(this, {
+        x: constants.toReal(this.size.x / 4 * 3) , y: constants.toReal(this.size.y / 4) // left right top
+    }));
+    this.attractors.push(new Attractor(this, {
+        x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4 * 3) // left left bottom
+    }));
+    this.attractors.push(new Attractor(this, {
+        x: constants.toReal(this.size.x / 4 * 3), y: constants.toReal(this.size.y / 4 * 3) // right right bottom
+    }));
 
     let intervalId, timeoutId;
 
     let spawnBody = (point, isManual = false) => {
+        point = { x: constants.toReal(point.x), y: constants.toReal(point.y) };
         this.addBody(new Body(this, point, isManual));
     };
 
@@ -67,9 +74,6 @@ function Game() {
         };
         spawnBody(bodyCenter, true);
     };
-    setInterval(spawnRandomBody, 10);
-
-    global.spawnBodies = true;
 
     let spawnBodyAtCoord = function (x, y) {
         return function () {
@@ -77,9 +81,20 @@ function Game() {
         };
     };
 
-    let interval = 20;
-    for (var x = 0; x <= this.size.x; x += interval) {
-        for (var y = 0; y <= this.size.y; y += interval) {
+    // setInterval(() => {
+    //     spawnBody({ x: this.size.x / 2, y: this.size.y / 2 }, true);
+    // }, 100);
+
+    const interval = 10;
+    const distance = Math.ceil(this.size.y * 0.1);
+    const planetRowAY = this.size.y / 4;
+    const planetRowBY = this.size.y / 4 * 3;
+    for (let x = 0; x <= this.size.x; x += interval) {
+        for (let y =  planetRowAY - distance; y <= planetRowAY + distance; y += interval) {
+            setTimeout(spawnBodyAtCoord(x, y));
+        }
+
+        for (let y = planetRowBY - distance; y <= planetRowBY + distance; y += interval) {
             setTimeout(spawnBodyAtCoord(x, y));
         }
     }
@@ -104,7 +119,6 @@ function Game() {
         screen.clearRect(0, 0, this.size.x, this.size.y); //allows this.update() to draw vectors
         this.update();
         this.draw();
-
         requestAnimationFrame(tick);
     };
 
@@ -112,7 +126,7 @@ function Game() {
 }
 
 Game.prototype.update = function() {
-    this.sources.forEach(source => source.update());
+    this.attractors.forEach(attractor => attractor.update());
 
     this.bodies = this.bodies.filter(function cleanDeadBodies(body) {
         return body.isAlive;
@@ -125,27 +139,22 @@ Game.prototype.draw = function() {
     let screen = this.screen;
 
     this.deadBodies.forEach(deadBody => {
-        canvasDraw.setColor(this.screen, deadBody.color);
-        canvasDraw.drawBody(this.screen, deadBody);
+        canvasDraw.setColor(deadBody.color);
+        canvasDraw.drawBody(deadBody);
     });
-    canvasDraw.setColor(screen, "black");
-    this.bodies.filter(body => body.isManual).forEach(body => canvasDraw.drawBody(screen, body));
+    canvasDraw.setColor("black");
+    this.bodies
+        // .filter(body => body.isManual)
+        .forEach(body => canvasDraw.drawBody(body));
     // this.deadBodies = [];
 
-    this.sources.forEach(source => {
-        canvasDraw.setColor(screen, source.color);
-        canvasDraw.drawBody(screen, source);
-        canvasDraw.setColor(screen, "black");
-        screen.beginPath();
-        screen.arc(source.center.x, source.center.y, source.radius, 0, 2 * Math.PI, false);
-        screen.stroke();
+    this.attractors.forEach(attractor => {
+        canvasDraw.setColor(attractor.color);
+        canvasDraw.drawBody(attractor);
     });
 
-    // canvasDraw.setColor(screen, "red");
-    // this.attractors.forEach(attractor => canvasDraw.drawBody(screen, attractor));
-
-    // canvasDraw.setColor(screen, "black");
-    // screen.fillText("Bodies: " + this.bodies.length, 5, this.size.y - 5);
+    canvasDraw.setColor("black");
+    screen.fillText("Bodies: " + this.bodies.length, 5, this.size.y - 5);
 };
 
 Game.prototype.addBody = function(body) {

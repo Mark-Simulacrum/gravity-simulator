@@ -1,27 +1,51 @@
-export function setColor(screen, color) {
+import {fromReal} from "./constants";
+
+let screen;
+export function setScreen(newScreen) {
+    screen = newScreen;
+}
+
+function convertPoint(point) {
+    return {
+        x: fromReal(point.x),
+        y: fromReal(point.y)
+    };
+}
+
+export function setColor(color) {
     if (screen.fillStyle !== color) screen.fillStyle = color;
     if (screen.strokeStyle !== color) screen.strokeStyle = color;
 }
 
-export function drawBody(screen, body) {
+export function drawBody(body) {
+    let center = convertPoint(body.center);
+    let radius = fromReal(body.radius);
+    if (radius < 1) {
+        console.log("radius is tiny!", radius);
+        radius = 1;
+    }
+
     screen.beginPath();
-    screen.arc(body.center.x, body.center.y, body.radius, 0, 2 * Math.PI, false);
+    screen.arc(center.x, center.y, radius, 0, 2 * Math.PI, false);
     screen.fill();
 
-    if (body.speed) {
-        screen.fillText("s" + body.speed.toFixed(4), body.center.x - body.radius, body.center.y - body.radius);
+    if (body.type && body.type === "attractor") {
+        setColor("black");
+        screen.beginPath();
+        screen.arc(center.x, center.y, radius, 0, 2 * Math.PI, false);
+        screen.stroke();
     }
 }
 
-export function drawVector(screen, fromPoint, toPoint) {
-    setColor(screen, "blue");
+export function drawVector(fromPoint, toPoint) {
+    setColor("blue");
     screen.beginPath();
     screen.moveTo(fromPoint.x, fromPoint.y);
     screen.lineTo(toPoint.x, toPoint.y);
     screen.stroke();
 }
 
-export function drawPoint(screen, point, color = "black", size = 1) {
+export function drawPoint(point, color = "black", size = 1) {
     screen.fillStyle = color;
     screen.beginPath();
     screen.moveTo(point.x, point.y);
@@ -29,7 +53,9 @@ export function drawPoint(screen, point, color = "black", size = 1) {
     screen.fill();
 }
 
-export function drawLine(screen, pointA, pointB, color = "black") {
+export function drawLine(pointA, pointB, color = "black") {
+    pointA = convertPoint(pointA);
+    pointB = convertPoint(pointB);
     screen.strokeStyle = color;
     screen.beginPath();
     screen.moveTo(pointA.x, pointA.y);
@@ -37,7 +63,7 @@ export function drawLine(screen, pointA, pointB, color = "black") {
     screen.stroke();
 }
 
-export function drawLineF(screen, func, color, loopAll) {
+export function drawLineF(func, color, loopAll) {
     if (loopAll) {
         for (let x = 0; x < screen.canvas.width; x++) {
             drawPoint(screen, {x, y: func(x)}, color);

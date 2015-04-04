@@ -1,3 +1,5 @@
+import * as canvasDraw from "./canvasDraw";
+
 export function point(x, y) {
     return { x, y };
 }
@@ -79,7 +81,7 @@ export function getHitPoints(pointA, pointB, center, radius) {
 }
 
 export function isPointInCircle(point, center, radius) {
-    return Math.pow(point.x - center.x, 2) + Math.pow(point.y - center.y, 2) <= radius;
+    return distanceBetween(point, center) <= radius;
 }
 
 // Is point C between point A and B, assuming that all points are collinear
@@ -103,17 +105,20 @@ export function willCollide(originalCenter, bodyDeltaX, bodyDeltaY, potentialCol
     for (let potentialColliderIdx = 0; potentialColliderIdx < potentialColliders.length; potentialColliderIdx++) {
         let potentialCollider = potentialColliders[potentialColliderIdx];
 
+//        canvasDraw.drawLine(originalCenter, potentialCollider.center, potentialCollider.color);
+
         // The line containing the segment is intersecting the circle
         if (distanceToLine(originalCenter, shiftedBodyCenter, potentialCollider.center) <= potentialCollider.radius) {
             // Checks if either point is inside the circle
-            if (isPointInCircle(originalCenter, potentialCollider.center, potentialCollider.radius) ||
-                isPointInCircle(shiftedBodyCenter, potentialCollider.center, potentialCollider.radius)
-                ) {
+            // if (
+            //         isPointInCircle(originalCenter, potentialCollider.center, potentialCollider.radius)    ||
+            //         isPointInCircle(shiftedBodyCenter, potentialCollider.center, potentialCollider.radius) ||
+            //     ) {
 
-                callback(potentialCollider);
+            //     callback(potentialCollider);
 
-                return true;
-            }
+            //     return true;
+            // }
 
             let hitPoints = getHitPoints(originalCenter, shiftedBodyCenter, potentialCollider.center, potentialCollider.radius);
 
