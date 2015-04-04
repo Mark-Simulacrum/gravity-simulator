@@ -1,0 +1,14 @@
+{
+    "rules": {
+        "strict": false,
+        "esnext": true,
+        "quotes": false,
+        "curly": false,
+        "no-use-before-define": false,
+        "no-multi-spaces": false,
+        "comma-spacing": false,
+        "no-loop-func": false,
+        "no-shadow": false,
+        "no-unused-vars": false,
+    }
+}
