@@ -1,26 +1,22 @@
 import uniqueId from "lodash.uniqueid";
 import * as constants from "./constants";
 
-let sourceNum = 4;
-let sourceColors = [];
-let sourceMasses = [];
-for (let i = 1; i <= sourceNum; i++) {
-    let num = 360 / sourceNum * i;
-    sourceColors.push(`hsl(${num}, 100%, 50%)`);
-    sourceMasses.push(constants.EarthMass * i);
-}
-
+let initNum = 1;
 function Attractor(game, center) {
-    this.type = "attractor";
-    this.id = uniqueId();
+    this.id = uniqueId("attractor");
+    this.initNum = initNum;
+
     this.game = game;
     this.center = center;
-    this.color = sourceColors.shift(); //'#' + Math.floor(Math.random() * 16777215).toString(16);
+    this.mass = constants.EarthMass * initNum;
 
-    this.mass = sourceMasses.shift();
     this.radius = this.mass / constants.EarthMass * constants.EarthRadius;
+
+    initNum++;
 }
 
-Attractor.prototype.update = function () {};
+Attractor.prototype.update = function () {
+    this.color = `hsl(${360 / this.game.attractors.length * this.initNum}, 100%, 50%)`;
+};
 
 export default Attractor;

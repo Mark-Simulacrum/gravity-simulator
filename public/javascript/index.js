@@ -1,13 +1,16 @@
 import uniq from "lodash.uniq";
 import pick from "lodash.pick";
 
+import presenceTracker from "./presenceTracker";
+
+import Attractor from "./Attractor";
+import Cannon from "./Cannon";
+import Body from "./Body";
+
+import * as canvasDraw from "./canvasDraw";
+import * as constants from "./constants";
 import * as pointUtils from "./pointUtils";
 let point = pointUtils.point;
-import * as canvasDraw from "./canvasDraw";
-import presenceTracker from "./presenceTracker";
-import Attractor from "./Attractor";
-import Body from "./Body";
-import * as constants from "./constants";
 
 function uniquePairs(array) {
     let pairs = [];
@@ -46,93 +49,131 @@ function Game() {
     this.deadBodies = [];
     this.bodies = [];
     this.attractors = [];
+    this.cannons = [];
 
     this.attractors.push(new Attractor(this, {
         x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4) // left left top
     }));
-    this.attractors.push(new Attractor(this, {
-        x: constants.toReal(this.size.x / 4 * 3) , y: constants.toReal(this.size.y / 4) // left right top
-    }));
-    this.attractors.push(new Attractor(this, {
-        x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4 * 3) // left left bottom
-    }));
-    this.attractors.push(new Attractor(this, {
-        x: constants.toReal(this.size.x / 4 * 3), y: constants.toReal(this.size.y / 4 * 3) // right right bottom
-    }));
+    // this.attractors.push(new Attractor(this, {
+    //     x: constants.toReal(this.size.x / 4 * 3) , y: constants.toReal(this.size.y / 4) // left right top
+    // }));
+    // this.attractors.push(new Attractor(this, {
+    //     x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4 * 3) // left left bottom
+    // }));
+    // this.attractors.push(new Attractor(this, {
+    //     x: constants.toReal(this.size.x / 4 * 3), y: constants.toReal(this.size.y / 4 * 3) // right right bottom
+    // }));
 
     let intervalId, timeoutId;
 
     let spawnBody = (point, isManual = false) => {
-        point = { x: constants.toReal(point.x), y: constants.toReal(point.y) };
         this.addBody(new Body(this, point, isManual));
     };
 
-    let spawnRandomBody = () => {
-        let bodyCenter = {
-            x: randomNum(0, this.size.x),
-            y: randomNum(0, this.size.y)
-        };
-        spawnBody(bodyCenter, true);
+    let spawnCannon = (point) => {
+        let comparePoint = pointUtils.fromReal(point);
+        let toPoint = pointUtils.toReal({
+            x: comparePoint.x === this.size.x ? 0 : comparePoint.x === 0 ? this.size.x : comparePoint.x,
+            y: comparePoint.y === this.size.y ? 0 : comparePoint.y === 0 ? this.size.y : comparePoint.y
+        });
+
+        this.cannons.push(new Cannon(this, point, toPoint));
     };
 
-    let spawnBodyAtCoord = function (x, y) {
-        return function () {
-            spawnBody({ x, y });
+    // const interval = 20;
+    // const distance = 20 * 7;
+    // const planetRowAX = this.size.x / 4;
+    // const planetRowAY = this.size.y / 4;
+    // const planetRowBX = this.size.x / 4 * 3;
+    // const planetRowBY = this.size.y / 4 * 3;
+    // for (let y =  planetRowAY - distance; y <= planetRowAY + distance; y += interval) {
+    //     setTimeout(() => {
+    //         spawnCannon(pointUtils.toReal({ x: this.size.x, y }));
+    //     });
+    // }
+
+    // for (let y = planetRowBY - distance; y <= planetRowBY + distance; y += interval) {
+    //     setTimeout(() => {
+    //         spawnCannon(pointUtils.toReal({ x: this.size.x, y }));
+    //     });
+    // }
+
+    // for (let x =  planetRowAX - distance; x <= planetRowAX + distance; x += interval) {
+    //     setTimeout(() => {
+    //         spawnCannon(pointUtils.toReal({ x: x, y: 0 }));
+    //     });
+    // }
+
+    // for (let x = planetRowBX - distance; x <= planetRowBX + distance; x += interval) {
+    //     setTimeout(() => {
+    //         spawnCannon(pointUtils.toReal({ x: x, y: 0 }));
+    //     });
+    // }
+
+    canvas.addEventListener("click", (e) => {
+        let {clientX, clientY} = e;
+
+        const point = {
+            x: constants.toReal(clientX),
+            y: constants.toReal(clientY)
         };
-    };
 
-    // setInterval(() => {
-    //     spawnBody({ x: this.size.x / 2, y: this.size.y / 2 }, true);
-    // }, 100);
+        let closestCannon = this.cannonNearPoint(point);
 
-    const interval = 10;
-    const distance = Math.ceil(this.size.y * 0.1);
-    const planetRowAY = this.size.y / 4;
-    const planetRowBY = this.size.y / 4 * 3;
-    for (let x = 0; x <= this.size.x; x += interval) {
-        for (let y =  planetRowAY - distance; y <= planetRowAY + distance; y += interval) {
-            setTimeout(spawnBodyAtCoord(x, y));
+        if (e.ctrlKey) {
+            console.log("new cannon");
+            spawnCannon(point);
+        } else if (e.shiftKey) {
+            console.log("new planet");
+            this.attractors.push(new Attractor(this, point));
+        } else if (closestCannon && closestCannon.distance <= pointUtils.fromReal(100)) {
+            let cannon = closestCannon.cannon;
+            cannon.select(point);
+        } else {
+            spawnBody(point, true);
         }
-
-        for (let y = planetRowBY - distance; y <= planetRowBY + distance; y += interval) {
-            setTimeout(spawnBodyAtCoord(x, y));
-        }
-    }
-
-    function pointSort(a, b) {
-        let centerA = a.center;
-        let centerB = b.center;
-        if (centerA.x < centerB.x || centerA.y < centerB.y) {
-            return -1;
-        } else if (centerA.x === centerB.x && centerA.y === centerB.y) {
-            return 0;
-        } else { // centerB is "greater" than centerA
-            return 1;
-        }
-    }
-
-    canvas.addEventListener("click", ({clientX, clientY}) => {
-        spawnBody(point(clientX, clientY), true);
     });
 
+
     let tick = () => {
-        screen.clearRect(0, 0, this.size.x, this.size.y); //allows this.update() to draw vectors
+        // screen.clearRect(0, 0, this.size.x, this.size.y); //allows this.update() to draw vectors
         this.update();
         this.draw();
         requestAnimationFrame(tick);
     };
 
+    this.updatedAt = Date.now();
     requestAnimationFrame(tick);
 }
 
-Game.prototype.update = function() {
-    this.attractors.forEach(attractor => attractor.update());
+Game.prototype.cannonNearPoint = function (point) {
+    let distanceTo = (cannon) => Math.ceil(pointUtils.distanceBetween(point, cannon.center));
 
-    this.bodies = this.bodies.filter(function cleanDeadBodies(body) {
-        return body.isAlive;
+    let distances = this.cannons.map(cannon => distanceTo(cannon));
+
+    let minumumDistance = Math.min.apply(Math, distances);
+
+    let returnVal = null;
+    this.cannons.some(cannon => {
+        if (distanceTo(cannon) === minumumDistance) {
+            returnVal = { cannon, distance: minumumDistance };
+        }
     });
 
-    this.bodies.forEach(body => body.update());
+    return returnVal;
+};
+
+Game.prototype.update = function() {
+    const now = Date.now();
+    const timeSinceUpdate = (now - this.updatedAt) * constants.TimeScale;
+    this.updatedAt = now;
+
+    this.attractors.forEach(attractor => attractor.update());
+
+    this.bodies.forEach(body => body.update(timeSinceUpdate)); // Update must run before cleanup of dead bodies
+    this.bodies = this.bodies.filter(body => body.isAlive);
+
+    this.cannons.forEach(cannon => cannon.update());
 };
 
 Game.prototype.draw = function() {
@@ -142,16 +183,13 @@ Game.prototype.draw = function() {
         canvasDraw.setColor(deadBody.color);
         canvasDraw.drawBody(deadBody);
     });
-    canvasDraw.setColor("black");
+
     this.bodies
         // .filter(body => body.isManual)
-        .forEach(body => canvasDraw.drawBody(body));
-    // this.deadBodies = [];
+        .forEach(canvasDraw.drawBody);
 
-    this.attractors.forEach(attractor => {
-        canvasDraw.setColor(attractor.color);
-        canvasDraw.drawBody(attractor);
-    });
+    this.attractors.forEach(canvasDraw.drawBody);
+    this.cannons.forEach(canvasDraw.drawBody);
 
     canvasDraw.setColor("black");
     screen.fillText("Bodies: " + this.bodies.length, 5, this.size.y - 5);

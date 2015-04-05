@@ -18,6 +18,8 @@ export function setColor(color) {
 }
 
 export function drawBody(body) {
+    setColor(body.color);
+
     let center = convertPoint(body.center);
     let radius = fromReal(body.radius);
     if (radius < 1) {
@@ -29,7 +31,7 @@ export function drawBody(body) {
     screen.arc(center.x, center.y, radius, 0, 2 * Math.PI, false);
     screen.fill();
 
-    if (body.type && body.type === "attractor") {
+    if (body.id.startsWith("attractor")) {
         setColor("black");
         screen.beginPath();
         screen.arc(center.x, center.y, radius, 0, 2 * Math.PI, false);
@@ -37,15 +39,9 @@ export function drawBody(body) {
     }
 }
 
-export function drawVector(fromPoint, toPoint) {
-    setColor("blue");
-    screen.beginPath();
-    screen.moveTo(fromPoint.x, fromPoint.y);
-    screen.lineTo(toPoint.x, toPoint.y);
-    screen.stroke();
-}
-
 export function drawPoint(point, color = "black", size = 1) {
+    point = convertPoint(point);
+
     screen.fillStyle = color;
     screen.beginPath();
     screen.moveTo(point.x, point.y);
@@ -53,22 +49,24 @@ export function drawPoint(point, color = "black", size = 1) {
     screen.fill();
 }
 
-export function drawLine(pointA, pointB, color = "black") {
+export function drawLine(pointA, pointB, color = "black", size = 1) {
     pointA = convertPoint(pointA);
     pointB = convertPoint(pointB);
+
     screen.strokeStyle = color;
+    screen.strokeWidth = size;
     screen.beginPath();
     screen.moveTo(pointA.x, pointA.y);
     screen.lineTo(pointB.x, pointB.y);
     screen.stroke();
 }
 
-export function drawLineF(func, color, loopAll) {
+export function drawLineF(func, color = "black", size = 1, loopAll) {
     if (loopAll) {
         for (let x = 0; x < screen.canvas.width; x++) {
-            drawPoint(screen, {x, y: func(x)}, color);
+            drawPoint(screen, {x, y: func(x)}, color, size);
         }
     } else {
-        drawLine(screen, {x: 0, y: func(0)}, {x: screen.canvas.width, y: func(screen.canvas.width)}, color);
+        drawLine(screen, {x: 0, y: func(0)}, {x: screen.canvas.width, y: func(screen.canvas.width)}, color, size);
     }
 }

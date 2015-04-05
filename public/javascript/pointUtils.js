@@ -1,4 +1,13 @@
 import * as canvasDraw from "./canvasDraw";
+import * as constants from "./constants";
+
+export function toReal(point) {
+    return { x: constants.toReal(point.x), y: constants.toReal(point.y) };
+}
+
+export function fromReal(point) {
+    return { x: constants.fromReal(point.x), y: constants.fromReal(point.y) };
+}
 
 export function point(x, y) {
     return { x, y };
@@ -77,6 +86,10 @@ export function getHitPoints(pointA, pointB, center, radius) {
         }
     }
 
+    // hitPoints.forEach(point => {
+    //     canvasDraw.drawPoint(point, "red", 5);
+    // });
+
     return hitPoints;
 }
 
@@ -86,7 +99,7 @@ export function isPointInCircle(point, center, radius) {
 
 // Is point C between point A and B, assuming that all points are collinear
 export function isBetween(pointA, betweenPoint, pointB) {
-    let isBetween = (pointA, pointB) => {
+    let _isBetween = (pointA, pointB) => {
         // If X coordinates are equal, then the y coordinate needs to be checked to see if it is in between
         if (pointA.x === pointB.x) {
             return pointA.y <= betweenPoint.y && betweenPoint.y <= pointB.y;
@@ -96,39 +109,28 @@ export function isBetween(pointA, betweenPoint, pointB) {
     };
 
     // Checking both pointA and pointB on both sides allows passing them in any order.
-    return isBetween(pointA, pointB) || isBetween(pointB, pointA);
+    return _isBetween(pointA, pointB) || _isBetween(pointB, pointA);
 }
 
 export function willCollide(originalCenter, bodyDeltaX, bodyDeltaY, potentialColliders, callback) {
     let shiftedBodyCenter = {x: originalCenter.x + bodyDeltaX, y: originalCenter.y + bodyDeltaY };
+        // shiftedBodyCenter = fromReal(shiftedBodyCenter);
+    let bodyCenter = originalCenter;
 
-    for (let potentialColliderIdx = 0; potentialColliderIdx < potentialColliders.length; potentialColliderIdx++) {
-        let potentialCollider = potentialColliders[potentialColliderIdx];
-
-//        canvasDraw.drawLine(originalCenter, potentialCollider.center, potentialCollider.color);
-
+    return potentialColliders.some(potentialCollider => {
         // The line containing the segment is intersecting the circle
-        if (distanceToLine(originalCenter, shiftedBodyCenter, potentialCollider.center) <= potentialCollider.radius) {
-            // Checks if either point is inside the circle
-            // if (
-            //         isPointInCircle(originalCenter, potentialCollider.center, potentialCollider.radius)    ||
-            //         isPointInCircle(shiftedBodyCenter, potentialCollider.center, potentialCollider.radius) ||
-            //     ) {
+        if (distanceToLine(bodyCenter, shiftedBodyCenter, potentialCollider.center) <= potentialCollider.radius) {
+            if (isPointInCircle(bodyCenter, potentialCollider.center, potentialCollider.radius) ||
+                isPointInCircle(shiftedBodyCenter, potentialCollider.center, potentialCollider.radius)) {
 
-            //     callback(potentialCollider);
-
-            //     return true;
-            // }
-
-            let hitPoints = getHitPoints(originalCenter, shiftedBodyCenter, potentialCollider.center, potentialCollider.radius);
-
-            hitPoints = hitPoints.filter(hitPoint => isBetween(originalCenter, hitPoint, shiftedBodyCenter));
-
-            if (hitPoints.length > 0) {
                 callback(potentialCollider);
+
                 return true;
             }
+
+            let hitPoints = getHitPoints(bodyCenter, shiftedBodyCenter, potentialCollider.center, potentialCollider.radius);
+
+            return hitPoints.some(hitPoint => isBetween(bodyCenter, hitPoint, shiftedBodyCenter));
         }
-    }
-    return false;
+    });
 }
