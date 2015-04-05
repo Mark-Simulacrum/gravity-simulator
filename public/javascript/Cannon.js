@@ -20,9 +20,11 @@ export default class Cannon {
         this.select(toPoint); // creates this.shootVector
     }
     vectorToPoint() {
+        let scaledVector = this.shootVector.scale(10e3);
+
         let vectorToPoint = {
-            x: this.center.x + this.shootVector.getDeltaX(),
-            y: this.center.y + this.shootVector.getDeltaY()
+            x: this.center.x + scaledVector.getDeltaX(),
+            y: this.center.y + scaledVector.getDeltaY()
         };
 
         return vectorToPoint;
@@ -45,11 +47,9 @@ export default class Cannon {
         --this.updates;
     }
     select(point) {
-        this.game.cannons.forEach(cannon => cannon.deselect());
-        this.selected = true;
-
         this.shootVector = new Vector(
-            100,//pointUtils.distanceBetween(this.center, point),
+            7000,//pointUtils.distanceBetween(this.center, point),
+            point === undefined ? Math.PI :
             Math.atan2(
                 this.center.y - point.y,
                 this.center.x - point.x

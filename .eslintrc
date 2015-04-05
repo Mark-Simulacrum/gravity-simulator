@@ -8,7 +8,6 @@
         "no-multi-spaces": false,
         "comma-spacing": false,
         "no-loop-func": false,
-        "no-shadow": false,
-        "no-unused-vars": false,
+        "no-shadow": false
     }
 }

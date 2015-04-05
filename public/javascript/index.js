@@ -51,18 +51,18 @@ function Game() {
     this.attractors = [];
     this.cannons = [];
 
-    this.attractors.push(new Attractor(this, {
-        x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4) // left left top
-    }));
+    // this.attractors.push(new Attractor(this, {
+    //     x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4) // left left top
+    // }));
     // this.attractors.push(new Attractor(this, {
     //     x: constants.toReal(this.size.x / 4 * 3) , y: constants.toReal(this.size.y / 4) // left right top
     // }));
     // this.attractors.push(new Attractor(this, {
     //     x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4 * 3) // left left bottom
     // }));
-    // this.attractors.push(new Attractor(this, {
-    //     x: constants.toReal(this.size.x / 4 * 3), y: constants.toReal(this.size.y / 4 * 3) // right right bottom
-    // }));
+    this.attractors.push(new Attractor(this, {
+        x: constants.toReal(this.size.x / 4 * 3), y: constants.toReal(this.size.y / 4 * 3) // right right bottom
+    }));
 
     let intervalId, timeoutId;
 
@@ -126,21 +126,30 @@ function Game() {
         } else if (e.shiftKey) {
             console.log("new planet");
             this.attractors.push(new Attractor(this, point));
-        } else if (closestCannon && closestCannon.distance <= pointUtils.fromReal(100)) {
+        } else if (closestCannon && closestCannon.distance <= constants.toReal(100)) {
             let cannon = closestCannon.cannon;
             cannon.select(point);
         } else {
+            console.log("d:", closestCannon && constants.fromReal(closestCannon.distance));
             spawnBody(point, true);
         }
     });
 
 
     let tick = () => {
-        // screen.clearRect(0, 0, this.size.x, this.size.y); //allows this.update() to draw vectors
+        screen.clearRect(0, 0, this.size.x, this.size.y); //allows this.update() to draw vectors
         this.update();
         this.draw();
         requestAnimationFrame(tick);
     };
+
+    // let speed = 7000;
+    // for (let x = 0; x <= this.size.x; x += 20, speed += 700) {
+    //     let hue = speed / (10 * 7000) * (360 - 200) + 200;
+    //     let point = pointUtils.toReal({x, y: 10});
+    //     console.log(hue, speed);
+    //     canvasDraw.drawPoint(point, `hsl(${hue}, 100%, 30%)`, 10);
+    // }
 
     this.updatedAt = Date.now();
     requestAnimationFrame(tick);
@@ -165,7 +174,8 @@ Game.prototype.cannonNearPoint = function (point) {
 
 Game.prototype.update = function() {
     const now = Date.now();
-    const timeSinceUpdate = (now - this.updatedAt) * constants.TimeScale;
+    let timeSinceUpdate = (now - this.updatedAt) * constants.TimeScale;
+    timeSinceUpdate = Math.min(500, timeSinceUpdate);
     this.updatedAt = now;
 
     this.attractors.forEach(attractor => attractor.update());
@@ -180,7 +190,6 @@ Game.prototype.draw = function() {
     let screen = this.screen;
 
     this.deadBodies.forEach(deadBody => {
-        canvasDraw.setColor(deadBody.color);
         canvasDraw.drawBody(deadBody);
     });
 

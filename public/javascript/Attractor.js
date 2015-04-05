@@ -8,7 +8,7 @@ function Attractor(game, center) {
 
     this.game = game;
     this.center = center;
-    this.mass = constants.EarthMass * initNum;
+    this.mass = constants.EarthMass * 2 * initNum;
 
     this.radius = this.mass / constants.EarthMass * constants.EarthRadius;
 

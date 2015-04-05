@@ -9,12 +9,8 @@ export function fromReal(point) {
     return { x: constants.fromReal(point.x), y: constants.fromReal(point.y) };
 }
 
-export function point(x, y) {
-    return { x, y };
-}
-
 export function midpoint(pointA, pointB) {
-    return point((pointA.x + pointB.x) / 2, (pointA.y + pointB.y) / 2);
+    return { x: (pointA.x + pointB.x) / 2, y: (pointA.y + pointB.y) / 2 };
 }
 
 export function distanceBetween(pointA, pointB) {
@@ -112,15 +108,16 @@ export function isBetween(pointA, betweenPoint, pointB) {
     return _isBetween(pointA, pointB) || _isBetween(pointB, pointA);
 }
 
-export function willCollide(originalCenter, bodyDeltaX, bodyDeltaY, potentialColliders, callback) {
-    let shiftedBodyCenter = {x: originalCenter.x + bodyDeltaX, y: originalCenter.y + bodyDeltaY };
-        // shiftedBodyCenter = fromReal(shiftedBodyCenter);
-    let bodyCenter = originalCenter;
+export function willCollide(originalCenter, bodyDelta, potentialColliders, callback) {
+    let shiftedBodyCenter = {
+        x: originalCenter.x + bodyDelta.x,
+        y: originalCenter.y + bodyDelta.y
+    };
 
     return potentialColliders.some(potentialCollider => {
         // The line containing the segment is intersecting the circle
-        if (distanceToLine(bodyCenter, shiftedBodyCenter, potentialCollider.center) <= potentialCollider.radius) {
-            if (isPointInCircle(bodyCenter, potentialCollider.center, potentialCollider.radius) ||
+        if (distanceToLine(originalCenter, shiftedBodyCenter, potentialCollider.center) <= potentialCollider.radius) {
+            if (isPointInCircle(originalCenter, potentialCollider.center, potentialCollider.radius) ||
                 isPointInCircle(shiftedBodyCenter, potentialCollider.center, potentialCollider.radius)) {
 
                 callback(potentialCollider);
@@ -128,9 +125,9 @@ export function willCollide(originalCenter, bodyDeltaX, bodyDeltaY, potentialCol
                 return true;
             }
 
-            let hitPoints = getHitPoints(bodyCenter, shiftedBodyCenter, potentialCollider.center, potentialCollider.radius);
+            let hitPoints = getHitPoints(originalCenter, shiftedBodyCenter, potentialCollider.center, potentialCollider.radius);
 
-            return hitPoints.some(hitPoint => isBetween(bodyCenter, hitPoint, shiftedBodyCenter));
+            return hitPoints.some(hitPoint => isBetween(originalCenter, hitPoint, shiftedBodyCenter));
         }
     });
 }

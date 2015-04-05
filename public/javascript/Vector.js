@@ -30,12 +30,12 @@ export default class Vector {
             this.unit
         );
 
-        console.log("Angle to", this.angleTo(axis));
-        console.log("aX length", aX.length);
-
         let aY = this.subtract(aX);
 
         return { a: aX, b: aY };
+    }
+    scale(scaleAmount) {
+        return new Vector(this.length * scaleAmount, this.direction, this.unit);
     }
     opposite() {
         return new Vector(
