@@ -6,13 +6,15 @@ import * as canvasDraw from "./canvasDraw";
 import * as constants from "./constants";
 import * as pointUtils from "./pointUtils";
 
+let initNum = 0;
 function Body(game, center, isManual, options = {}) {
     this.game = game;
     this.center = center;
     this.isManual = isManual;
 
     this.isAlive = true;
-    this.id = uniqueId("body");
+    this.type = "body";
+    this.id = initNum;
     this.originalCenter = { x: center.x, y: center.y };
 
     this.mass = constants.EarthMass / 2;
@@ -27,7 +29,8 @@ function Body(game, center, isManual, options = {}) {
     this.startSpeed = injectionVector.length;
     this.speed = injectionVector;
     this.timeSinceUpdate = 0;
-    this.delta = {};
+
+    initNum++;
 }
 
 Body.prototype.acceleration = function (force) {
