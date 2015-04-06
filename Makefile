@@ -1,9 +1,12 @@
-package: public
+deploy:
+	git checkout gh-pages
+	git rebase -f master
+	rm -r built index.html
+	npm install
 	webpack -p
-	rm -rf output
-	mkdir output
-	cp -r public/built output/built
-	cp public/index.html output/index.html
-	cp -r public/javascript output
-	tar -cvjf output.tar.bz2 output
-	du -h -d 0 output output.tar.bz2
+	mv public/* ./
+	rm -r javascript
+	rm -r node_modules package.json webpack.config.js .eslintrc
+	rm .gitignore LICENSE Makefile
+	git commit -a -m "Deploying new gh-pages"
+	git push -f -u origin gh-pages
