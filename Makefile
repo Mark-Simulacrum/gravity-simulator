@@ -7,6 +7,6 @@ deploy:
 	mv public/* ./
 	rm -r javascript
 	rm -r node_modules package.json webpack.config.js .eslintrc
-	rm .gitignore LICENSE Makefile
+	rm .gitignore Makefile
 	git commit -a -m "Deploying new gh-pages"
 	git push -f -u origin gh-pages
