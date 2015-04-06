@@ -10,23 +10,6 @@ import Body from "./Body";
 import * as canvasDraw from "./canvasDraw";
 import * as constants from "./constants";
 import * as pointUtils from "./pointUtils";
-let point = pointUtils.point;
-
-function uniquePairs(array) {
-    let pairs = [];
-    for (var i = 0; i < array.length; i++) {
-        for (var j = i + 1; j < array.length; j++) {
-            pairs.push([
-                array[i], array[j]
-            ]);
-        }
-    }
-    return pairs;
-}
-
-function randomNum(min, max) {
-    return min + Math.random() * (max - min);
-}
 
 function Game() {
     let canvas = document.getElementById("canvas");
@@ -63,8 +46,6 @@ function Game() {
     this.attractors.push(new Attractor(this, {
         x: constants.toReal(this.size.x / 4 * 3), y: constants.toReal(this.size.y / 4 * 3) // right right bottom
     }));
-
-    let intervalId, timeoutId;
 
     let spawnBody = (point, isManual = false) => {
         this.addBody(new Body(this, point, isManual));
@@ -143,14 +124,6 @@ function Game() {
         requestAnimationFrame(tick);
     };
 
-    // let speed = 7000;
-    // for (let x = 0; x <= this.size.x; x += 20, speed += 700) {
-    //     let hue = speed / (10 * 7000) * (360 - 200) + 200;
-    //     let point = pointUtils.toReal({x, y: 10});
-    //     console.log(hue, speed);
-    //     canvasDraw.drawPoint(point, `hsl(${hue}, 100%, 30%)`, 10);
-    // }
-
     this.updatedAt = Date.now();
     requestAnimationFrame(tick);
 }
@@ -189,6 +162,7 @@ Game.prototype.update = function() {
 Game.prototype.draw = function() {
     let screen = this.screen;
 
+    screen.beginPath();
     this.deadBodies.forEach(deadBody => {
         canvasDraw.drawBody(deadBody);
     });
@@ -199,6 +173,7 @@ Game.prototype.draw = function() {
 
     this.attractors.forEach(canvasDraw.drawBody);
     this.cannons.forEach(canvasDraw.drawBody);
+    screen.fill();
 
     canvasDraw.setColor("black");
     screen.fillText("Bodies: " + this.bodies.length, 5, this.size.y - 5);

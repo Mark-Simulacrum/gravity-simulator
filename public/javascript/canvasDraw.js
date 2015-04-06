@@ -1,15 +1,13 @@
 import {fromReal} from "./constants";
+import { fromReal as fromRealPoint } from "./pointUtils";
 
 let screen;
 export function setScreen(newScreen) {
     screen = newScreen;
 }
 
-function convertPoint(point) {
-    return {
-        x: fromReal(point.x),
-        y: fromReal(point.y)
-    };
+function isPointOutOfBounds(point) {
+    return point.x < 0 || point.y < 0 || point.x > screen.canvas.width || point.y > screen.canvas.height;
 }
 
 export function setColor(color) {
@@ -18,29 +16,21 @@ export function setColor(color) {
 }
 
 export function drawBody(body) {
-    setColor(body.color);
-
-    let center = convertPoint(body.center);
+    let center = fromRealPoint(body.center);
     let radius = fromReal(body.radius);
-    if (radius < 1) {
-        console.log("radius is tiny!", radius);
-        radius = 1;
-    }
+    if (radius < 1) radius = 1;
 
-    screen.beginPath();
+    if (isPointOutOfBounds(center)) return;
+
+    screen.fillStyle = body.color;
+    screen.moveTo(center.x, center.y);
     screen.arc(center.x, center.y, radius, 0, 2 * Math.PI, false);
-    screen.fill();
-
-    if (body.id.startsWith("attractor")) {
-        setColor("black");
-        screen.beginPath();
-        screen.arc(center.x, center.y, radius, 0, 2 * Math.PI, false);
-        screen.stroke();
-    }
 }
 
 export function drawPoint(point, color = "black", size = 1) {
-    point = convertPoint(point);
+    point = fromRealPoint(point);
+
+    if (isPointOutOfBounds(point)) return;
 
     screen.fillStyle = color;
     screen.beginPath();
@@ -50,8 +40,8 @@ export function drawPoint(point, color = "black", size = 1) {
 }
 
 export function drawLine(pointA, pointB, color = "black", size = 1) {
-    pointA = convertPoint(pointA);
-    pointB = convertPoint(pointB);
+    pointA = fromRealPoint(pointA);
+    pointB = fromRealPoint(pointB);
 
     screen.strokeStyle = color;
     screen.strokeWidth = size;

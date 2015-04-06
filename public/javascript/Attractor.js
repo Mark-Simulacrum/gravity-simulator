@@ -3,7 +3,8 @@ import * as constants from "./constants";
 
 let initNum = 1;
 function Attractor(game, center) {
-    this.id = uniqueId("attractor");
+    this.type = "attractor";
+    this.id = initNum;
     this.initNum = initNum;
 
     this.game = game;

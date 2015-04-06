@@ -2,6 +2,7 @@ import uniqueId from "lodash.uniqueid";
 
 import Vector from "./Vector.js";
 import presenceTracker from "./presenceTracker";
+import * as canvasDraw from "./canvasDraw";
 import * as constants from "./constants";
 import * as pointUtils from "./pointUtils";
 
@@ -26,6 +27,7 @@ function Body(game, center, isManual, options = {}) {
     this.startSpeed = injectionVector.length;
     this.speed = injectionVector;
     this.timeSinceUpdate = 0;
+    this.delta = {};
 }
 
 Body.prototype.acceleration = function (force) {
