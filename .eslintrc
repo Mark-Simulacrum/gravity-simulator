@@ -1,14 +1,23 @@
 {
     "parser": "babel-eslint",
+    "env": {
+        "browser": true
+    },
+    "globals": {
+        "global": false
+    },
     "rules": {
         "strict": false,
         "esnext": true,
         "quotes": false,
         "curly": false,
         "no-use-before-define": false,
+        "no-underscore-dangle": false,
         "no-multi-spaces": false,
-        "comma-spacing": false,
         "no-loop-func": false,
-        "no-shadow": false
+        "no-console": false,
+        "no-shadow": false,
+        "comma-spacing": false,
+        "eol-last": false,
     }
 }
