@@ -133,7 +133,6 @@ Game.prototype.update = function() {
 Game.prototype.draw = function() {
     let screen = this.screen;
 
-    screen.beginPath();
     this.deadBodies.forEach(deadBody => {
         canvasDraw.drawBody(deadBody);
     });
@@ -144,7 +143,6 @@ Game.prototype.draw = function() {
 
     this.attractors.forEach(canvasDraw.drawBody);
     this.cannons.forEach(canvasDraw.drawBody);
-    screen.fill();
 
     canvasDraw.setColor("black");
     screen.fillText("Bodies: " + this.bodies.length, 1, this.size.y);

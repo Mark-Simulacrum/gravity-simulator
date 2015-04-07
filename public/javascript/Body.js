@@ -2,7 +2,6 @@ import uniqueId from "lodash.uniqueid";
 
 import Vector from "./Vector.js";
 import presenceTracker from "./presenceTracker";
-import * as canvasDraw from "./canvasDraw";
 import * as constants from "./constants";
 import * as pointUtils from "./pointUtils";
 
@@ -79,6 +78,7 @@ Body.prototype.update = function(timeSinceUpdate) {
     delta.x = delta.a.x + delta.b.x;
     delta.y = delta.a.y + delta.b.y;
 
+    let previousSpeed = this.speed.length;
     this.speed = new Vector(
         pointUtils.distanceBetween({ x: 0, y: 0 }, delta) / timeSinceUpdate,
         Math.atan2(
@@ -88,8 +88,11 @@ Body.prototype.update = function(timeSinceUpdate) {
         "m/s"
     );
 
-    let hue = this.speed.length / (3 * this.startSpeed) * (360 - 200) + 200;
-    this.color = `hsl(${hue}, 100%, 50%)`;
+    let currentAcceleration = this.speed.length - previousSpeed;
+    let min = 255;
+    let max = 360;
+    let hue = Math.min(currentAcceleration / max, 1) * (max - min) + min;
+    this.color = `hsl(${hue}, 100%, 70%)`;
 
     this.isAlive = !pointUtils.willCollide(this.center, delta, this.game.attractors, attractor => {
         let deadBody = {

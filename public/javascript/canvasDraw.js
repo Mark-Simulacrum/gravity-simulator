@@ -22,9 +22,11 @@ export function drawBody(body) {
 
     if (isPointOutOfBounds(center)) return;
 
+    screen.beginPath();
     screen.fillStyle = body.color;
     screen.moveTo(center.x, center.y);
     screen.arc(center.x, center.y, radius, 0, 2 * Math.PI, false);
+    screen.fill();
 }
 
 export function drawPoint(point, color = "black", size = 1) {
