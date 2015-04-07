@@ -62,7 +62,9 @@ function Game() {
         this.cannons.push(new Cannon(this, point, toPoint));
     };
 
-    canvas.addEventListener("click", (e) => {
+    let currentAttractor;
+
+    canvas.addEventListener("mousedown", (e) => {
         let {clientX, clientY} = e;
 
         const point = {
@@ -77,7 +79,15 @@ function Game() {
             spawnCannon(point);
         } else if (e.shiftKey) {
             console.log("new planet");
-            this.attractors.push(new Attractor(this, point));
+            let inAttractorData = this.pointInAttractor(point);
+            if (inAttractorData) {
+                let { attractor } = inAttractorData;
+
+                currentAttractor = attractor;
+            } else {
+                this.attractors.push(new Attractor(this, point));
+
+            }
         } else if (closestCannon && closestCannon.distance <= constants.toReal(100)) {
             let cannon = closestCannon.cannon;
             cannon.select(point);
@@ -85,6 +95,16 @@ function Game() {
             console.log("d:", closestCannon && constants.fromReal(closestCannon.distance));
             spawnBody(point, true);
         }
+    });
+
+    canvas.addEventListener("mouseup", e => {
+        let {clientX, clientY} = e;
+
+        if (currentAttractor) {
+            currentAttractor.center = pointUtils.toReal({ x: clientX, y: clientY });
+        }
+
+        currentAttractor = null;
     });
 
 
@@ -98,6 +118,27 @@ function Game() {
     this.updatedAt = Date.now();
     requestAnimationFrame(tick);
 }
+
+Game.prototype.pointInAttractor = function (point) {
+    let distanceTo = attractor => Math.ceil(pointUtils.distanceBetween(point, attractor.center));
+
+    let minumumData = null;
+
+    this.attractors.forEach(attractor => {
+        let distance = distanceTo(attractor);
+        if (minumumData === null || distance < minumumData.distance) {
+            minumumData = { distance, attractor };
+        }
+    });
+
+    console.log("data", minumumData);
+
+    if (minumumData && minumumData.attractor.radius >= minumumData.distance) {
+        return minumumData;
+    }
+
+    return null;
+};
 
 Game.prototype.cannonNearPoint = function (point) {
     let distanceTo = (cannon) => Math.ceil(pointUtils.distanceBetween(point, cannon.center));
