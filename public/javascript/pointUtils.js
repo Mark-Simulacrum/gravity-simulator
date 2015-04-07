@@ -120,14 +120,18 @@ export function willCollide(originalCenter, bodyDelta, potentialColliders, callb
             if (isPointInCircle(originalCenter, potentialCollider.center, potentialCollider.radius) ||
                 isPointInCircle(shiftedBodyCenter, potentialCollider.center, potentialCollider.radius)) {
 
-                callback(potentialCollider);
+                if (callback) callback(potentialCollider);
 
                 return true;
             }
 
             let hitPoints = getHitPoints(originalCenter, shiftedBodyCenter, potentialCollider.center, potentialCollider.radius);
 
-            return hitPoints.some(hitPoint => isBetween(originalCenter, hitPoint, shiftedBodyCenter));
+            let result = hitPoints.some(hitPoint => isBetween(originalCenter, hitPoint, shiftedBodyCenter));
+
+            if (result && callback) callback(potentialCollider);
+
+            return result;
         }
     });
 }
