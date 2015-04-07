@@ -14,13 +14,14 @@ import * as pointUtils from "./pointUtils";
 function Game() {
     let canvas = document.getElementById("canvas");
 
-    canvas.width = document.body.clientWidth - 10;
-    canvas.height = document.body.clientHeight - 10;
+    canvas.style.position = "absolute";
+    canvas.width = document.body.clientWidth;
+    canvas.height = document.body.clientHeight;
 
     // Get the drawing context.  This contains functions that let you draw to the canvas.
     let screen = canvas.getContext('2d');
     this.screen = screen;
-    screen.font = "20pt Arial";
+    screen.font = "10pt Arial";
 
     canvasDraw.setScreen(this.screen);
 
@@ -60,36 +61,6 @@ function Game() {
 
         this.cannons.push(new Cannon(this, point, toPoint));
     };
-
-    // const interval = 20;
-    // const distance = 20 * 7;
-    // const planetRowAX = this.size.x / 4;
-    // const planetRowAY = this.size.y / 4;
-    // const planetRowBX = this.size.x / 4 * 3;
-    // const planetRowBY = this.size.y / 4 * 3;
-    // for (let y =  planetRowAY - distance; y <= planetRowAY + distance; y += interval) {
-    //     setTimeout(() => {
-    //         spawnCannon(pointUtils.toReal({ x: this.size.x, y }));
-    //     });
-    // }
-
-    // for (let y = planetRowBY - distance; y <= planetRowBY + distance; y += interval) {
-    //     setTimeout(() => {
-    //         spawnCannon(pointUtils.toReal({ x: this.size.x, y }));
-    //     });
-    // }
-
-    // for (let x =  planetRowAX - distance; x <= planetRowAX + distance; x += interval) {
-    //     setTimeout(() => {
-    //         spawnCannon(pointUtils.toReal({ x: x, y: 0 }));
-    //     });
-    // }
-
-    // for (let x = planetRowBX - distance; x <= planetRowBX + distance; x += interval) {
-    //     setTimeout(() => {
-    //         spawnCannon(pointUtils.toReal({ x: x, y: 0 }));
-    //     });
-    // }
 
     canvas.addEventListener("click", (e) => {
         let {clientX, clientY} = e;
@@ -176,7 +147,7 @@ Game.prototype.draw = function() {
     screen.fill();
 
     canvasDraw.setColor("black");
-    screen.fillText("Bodies: " + this.bodies.length, 5, this.size.y - 5);
+    screen.fillText("Bodies: " + this.bodies.length, 1, this.size.y);
 };
 
 Game.prototype.addBody = function(body) {
