@@ -75,10 +75,8 @@ function Game() {
         let closestCannon = this.cannonNearPoint(point);
 
         if (e.ctrlKey) {
-            console.log("new cannon");
             spawnCannon(point);
         } else if (e.shiftKey) {
-            console.log("new planet");
             let inAttractorData = this.pointInAttractor(point);
             if (inAttractorData) {
                 let { attractor } = inAttractorData;
@@ -98,17 +96,19 @@ function Game() {
 
     canvas.addEventListener("mousemove", e => {
         let {clientX, clientY} = e;
+        let point = { x: clientX, y: clientY };
 
         if (currentAttractor) {
-            currentAttractor.center = pointUtils.toReal({ x: clientX, y: clientY });
+            currentAttractor.center = pointUtils.toReal(point);
         }
     });
 
     canvas.addEventListener("mouseup", e => {
         let {clientX, clientY} = e;
+        let point = { x: clientX, y: clientY };
 
         if (currentAttractor) {
-            currentAttractor.center = pointUtils.toReal({ x: clientX, y: clientY });
+            currentAttractor.center = pointUtils.toReal(point);
         }
 
         currentAttractor = null;
