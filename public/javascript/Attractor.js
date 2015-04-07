@@ -1,4 +1,3 @@
-import uniqueId from "lodash.uniqueid";
 import * as constants from "./constants";
 
 let initNum = 1;

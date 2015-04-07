@@ -1,5 +1,3 @@
-import uniqueId from "lodash.uniqueid";
-
 import Vector from "./Vector.js";
 import presenceTracker from "./presenceTracker";
 import * as constants from "./constants";

@@ -1,15 +1,16 @@
-import uniqueId from "lodash.uniqueid";
-
 import Vector from "./Vector";
 import Body from "./Body";
 import * as canvasDraw from "./canvasDraw";
 import * as pointUtils from "./pointUtils";
 import * as constants from "./constants";
 
+let initNum = 0;
+
 export default class Cannon {
     constructor(game, center, toPoint) {
         this.game = game;
-        this.id = uniqueId("cannon");
+        this.type = "cannon";
+        this.id = initNum;
         this.color = "red";
         this.center = center;
         this.mass = constants.EarthMass / 2;
@@ -18,6 +19,8 @@ export default class Cannon {
         this.updates = 0;
 
         this.select(toPoint); // creates this.shootVector
+
+        initNum++;
     }
     vectorToPoint() {
         let scaledVector = this.shootVector.scale(10e3);
