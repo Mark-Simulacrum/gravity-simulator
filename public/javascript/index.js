@@ -34,15 +34,15 @@ function Game() {
     this.attractors = [];
     this.cannons = [];
 
-    // this.attractors.push(new Attractor(this, {
-    //     x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4) // left left top
-    // }));
-    // this.attractors.push(new Attractor(this, {
-    //     x: constants.toReal(this.size.x / 4 * 3) , y: constants.toReal(this.size.y / 4) // left right top
-    // }));
-    // this.attractors.push(new Attractor(this, {
-    //     x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4 * 3) // left left bottom
-    // }));
+    this.attractors.push(new Attractor(this, {
+        x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4) // left left top
+    }));
+    this.attractors.push(new Attractor(this, {
+        x: constants.toReal(this.size.x / 4 * 3) , y: constants.toReal(this.size.y / 4) // left right top
+    }));
+    this.attractors.push(new Attractor(this, {
+        x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4 * 3) // left left bottom
+    }));
     this.attractors.push(new Attractor(this, {
         x: constants.toReal(this.size.x / 4 * 3), y: constants.toReal(this.size.y / 4 * 3) // right right bottom
     }));
