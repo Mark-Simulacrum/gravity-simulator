@@ -7,10 +7,11 @@
         "global": false
     },
     "rules": {
-        "strict": false,
         "esnext": true,
+        "strict": false,
         "quotes": false,
         "curly": false,
+        "no-var": true,
         "no-use-before-define": false,
         "no-underscore-dangle": false,
         "no-multi-spaces": false,
