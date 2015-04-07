@@ -94,15 +94,7 @@ Body.prototype.update = function(timeSinceUpdate) {
     let hue = Math.min(currentAcceleration / max, 1) * (max - min) + min;
     this.color = `hsl(${hue}, 100%, 70%)`;
 
-    this.isAlive = !pointUtils.willCollide(this.center, delta, this.game.attractors, attractor => {
-        let deadBody = {
-            color: attractor.color,
-            center: { x: this.originalCenter.x, y: this.originalCenter.y},
-            radius: this.radius,
-            id: this.id
-        };
-        this.game.deadBodies.push(deadBody);
-    });
+    this.isAlive = !pointUtils.willCollide(this.center, delta, this.game.attractors);
 
     this.center.x += delta.x;
     this.center.y += delta.y;
