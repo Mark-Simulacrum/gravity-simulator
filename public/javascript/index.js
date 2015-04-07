@@ -92,8 +92,15 @@ function Game() {
             let cannon = closestCannon.cannon;
             cannon.select(point);
         } else {
-            console.log("d:", closestCannon && constants.fromReal(closestCannon.distance));
             spawnBody(point, true);
+        }
+    });
+
+    canvas.addEventListener("mousemove", e => {
+        let {clientX, clientY} = e;
+
+        if (currentAttractor) {
+            currentAttractor.center = pointUtils.toReal({ x: clientX, y: clientY });
         }
     });
 
@@ -130,8 +137,6 @@ Game.prototype.pointInAttractor = function (point) {
             minumumData = { distance, attractor };
         }
     });
-
-    console.log("data", minumumData);
 
     if (minumumData && minumumData.attractor.radius >= minumumData.distance) {
         return minumumData;
