@@ -134,14 +134,14 @@ function Game() {
     });
 
     let processSpawning = (type) => {
-        if (!mousePos || selectedObject) return;
-
-        if (type === "attractor") {
-            this.attractors.push(new Attractor(this, mousePos));
-        } else if (type === "cannon") {
-            spawnCannon(mousePos);
-        } else if (type === "body") {
-            spawnBody(mousePos, true);
+        if (mousePos) {
+            if (type === "attractor") {
+                this.attractors.push(new Attractor(this, mousePos));
+            } else if (type === "cannon") {
+                spawnCannon(mousePos);
+            } else if (type === "body") {
+                spawnBody(mousePos, true);
+            }
         }
     };
 
