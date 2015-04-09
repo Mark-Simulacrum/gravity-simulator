@@ -1,7 +1,9 @@
 var webpack = require("webpack");
 
 module.exports = {
-    entry: "./public/javascript/index.js",
+    entry: [
+        "./public/javascript/index.js"
+    ],
     output: {
         publicPath: "public",
         path: "public/built",
@@ -14,9 +16,9 @@ module.exports = {
         loaders: [
             {
                 test: /\.js$/,
-                exclude: /(node_modules|bower_components)/,
+                exclude: /node_modules/,
                 loaders: [
-                    "babel-loader?optional=runtime"
+                    "babel-loader?{optional: ['runtime', 'es7.classProperties']}"
                 ]
             }
         ]

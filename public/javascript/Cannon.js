@@ -11,12 +11,14 @@ export default class Cannon {
         this.game = game;
         this.type = "cannon";
         this.id = initNum;
+        this.isAlive = true;
         this.color = "red";
         this.center = center;
         this.mass = constants.EarthMass / 2;
         this.radius = this.mass / constants.EarthMass * constants.EarthRadius;
 
         this.updates = 0;
+        this.rate = 50;
 
         this.select(toPoint); // creates this.shootVector
 
@@ -33,8 +35,8 @@ export default class Cannon {
         return vectorToPoint;
     }
     update() {
-        if (this.updates === 0) {
-            this.updates = 50;
+        if (this.updates <= 0) {
+            this.updates = this.rate;
             this.game.addBody(new Body(
                 this.game,
                 { x: this.center.x, y: this.center.y },
@@ -43,6 +45,10 @@ export default class Cannon {
                     initialSpeed: this.shootVector.clone()
                 }
             ));
+        }
+
+        if (this.updates > this.rate) {
+            this.updates = this.rate;
         }
 
         canvasDraw.drawLine(this.center, this.vectorToPoint());

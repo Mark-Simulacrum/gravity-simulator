@@ -1,3 +1,5 @@
+import {EventEmitter} from "events";
+import find from "lodash.find";
 import uniq from "lodash.uniq";
 import pick from "lodash.pick";
 
@@ -11,24 +13,68 @@ import * as canvasDraw from "./canvasDraw";
 import * as constants from "./constants";
 import * as pointUtils from "./pointUtils";
 
+class Keyboarder extends EventEmitter {
+    constructor() {
+        super();
+
+        this.keyState = {};
+
+        this.Keys = {
+            shift: 16,
+            ctrl: 17,
+            keypadPlus: 107,
+            keypadMinus: 109,
+            equalSign: 187,
+            dash: 189,
+            a: 65,
+            b: 66,
+            c: 67,
+            d: 68,
+            m: 77,
+            t: 84
+        };
+
+        window.addEventListener("keydown", e => {
+            this.keyState[e.keyCode] = true;
+            this.emit("keydown", e);
+        });
+        window.addEventListener("keyup", e => {
+            this.keyState[e.keyCode] = false;
+            this.emit("keyup", e);
+        });
+    }
+    isDown(keyCode) {
+        return this.keyState[keyCode] === true;
+    }
+    isUp(keyCode) {
+        return this.keyState[keyCode] !== true; // handle the undefined case
+    }
+}
+
 function Game() {
-    let canvas = document.getElementById("canvas");
+    this.canvas = document.getElementById("canvas");
+    this.keyboarder = new Keyboarder();
 
-    canvas.style.position = "absolute";
-    canvas.width = document.body.clientWidth;
-    canvas.height = document.body.clientHeight;
+    let openButton = document.querySelector("#open-button");
+    let closeButton = document.querySelector("#close-button");
+    let modal = document.querySelector("#directions");
 
-    // Get the drawing context.  This contains functions that let you draw to the canvas.
-    let screen = canvas.getContext('2d');
-    this.screen = screen;
-    screen.font = "10pt Arial";
+    openButton.addEventListener("click", () => {
+        if (modal.style.display !== "table") modal.style.display = "table";
+        else modal.style.display = "none";
+    });
+    closeButton.addEventListener("click", () => modal.style.display = "none");
+    // selectedItemDisplay.loadElements();
+
+    this.canvas.style.position = "absolute";
+    this.computeSize();
+    // selectedItemDisplay.select();
+
+    // Get the drawing context.
+    this.screen = this.canvas.getContext('2d');
+    this.screen.font = "10pt Arial";
 
     canvasDraw.setScreen(this.screen);
-
-    // Note down the dimensions of the canvas.  These are used to
-    // place game bodies.
-    this.size = { x: canvas.width, y: canvas.height };
-    this.realSize = { x: constants.toReal(this.size.x), y: constants.toReal(this.size.y) };
 
     this.deadBodies = [];
     this.bodies = [];
@@ -62,61 +108,153 @@ function Game() {
         this.cannons.push(new Cannon(this, point, toPoint));
     };
 
-    let currentAttractor;
+    let getClickedObject = point => {
+        return find(this.attractors.concat(this.cannons), object => {
+            let distance = pointUtils.distanceBetween(object.center, point);
 
-    canvas.addEventListener("mousedown", (e) => {
-        let {clientX, clientY} = e;
-
-        const point = {
-            x: constants.toReal(clientX),
-            y: constants.toReal(clientY)
-        };
-
-        let closestCannon = this.cannonNearPoint(point);
-
-        if (e.ctrlKey) {
-            spawnCannon(point);
-        } else if (e.shiftKey) {
-            let inAttractorData = this.pointInAttractor(point);
-            if (inAttractorData) {
-                let { attractor } = inAttractorData;
-
-                currentAttractor = attractor;
-            } else {
-                this.attractors.push(new Attractor(this, point));
-
+            // User clicked within a 50px circle or the object's radius around the center of the object
+            if (distance <= object.radius) {
+                return object;
             }
-        } else if (closestCannon && closestCannon.distance <= constants.toReal(100)) {
-            let cannon = closestCannon.cannon;
-            cannon.select(point);
-        } else {
-            spawnBody(point, true);
-        }
-    });
+        });
+    };
 
-    canvas.addEventListener("mousemove", e => {
+    let selectedObject;
+    let mouseDown = false;
+    let mousePos;
+
+    let adjustObject = (object, adjustment) => {
+        if (object.type === "attractor") {
+            if (selectedObject.radius > constants.toReal(1)) {
+                selectedObject.radius += constants.toReal(adjustment);
+                selectedObject.calculateMass();
+            }
+        } else if (object.type === "cannon") {
+            adjustment = -adjustment;
+            if (selectedObject.rate > 1) {
+                selectedObject.rate += adjustment; // The + should make the rate faster, - slower
+            } else if (selectedObject.rate === 1 && adjustment > 0) {
+                selectedObject.rate += adjustment;
+            }
+        }
+    };
+
+    let processSelected = () => {
+        if (!mousePos || !selectedObject) return;
+
+        if (this.keyboarder.isDown(this.keyboarder.Keys.m)) {
+            selectedObject.center = mousePos;
+        } else if (
+            this.keyboarder.isDown(this.keyboarder.Keys.keypadPlus) ||
+            (this.keyboarder.isDown(this.keyboarder.Keys.equalSign) && this.keyboarder.isDown(this.keyboarder.Keys.shift))
+            ) {
+            adjustObject(selectedObject, 1);
+        } else if (
+            this.keyboarder.isDown(this.keyboarder.Keys.keypadMinus) ||
+            this.keyboarder.isDown(this.keyboarder.Keys.dash)
+            ) {
+            adjustObject(selectedObject, -1);
+        } else if (
+            this.keyboarder.isDown(this.keyboarder.Keys.d) &&
+            this.keyboarder.isUp(this.keyboarder.Keys.shift)
+            ) {
+            selectedObject.isAlive = false;
+        } else if (
+            selectedObject.type === "cannon" &&
+            this.keyboarder.isDown(this.keyboarder.Keys.t)
+            ) {
+            selectedObject.select(mousePos);
+        }
+    };
+
+    let processBodyDelete = () => {
+        if (
+            this.keyboarder.isDown(this.keyboarder.Keys.shift) &&
+            this.keyboarder.isDown(this.keyboarder.Keys.d)
+            ) {
+            this.bodies = [];
+        }
+    };
+
+    // For the creation of the "how to do things" panel
+    // m: move attractors and cannons
+    // +: increase the rate at which cannons fire and the mass of attractors
+    // -: decrease the rate at which cannons fire and the mass of attractors
+    // d: delete the currently select object
+    // t: turn a cannon to point at the current mouse position
+    // shift+d: delete all bodies on screen
+    // ctrl+a: create an attractor at the current mouse coordinate
+    // ctrl+c: create a cannon at the current mouse coordinate
+    // ctrl+b: create a body at the current mouse coordinate
+
+    let called = false;
+    let processSpawning = () => {
+        if (called || !mousePos || !mouseDown || selectedObject) return;
+
+        called = true;
+
+        // Ctrl is down, we may be about to spawn an object
+        if (this.keyboarder.isDown(this.keyboarder.Keys.ctrl)) {
+
+            // A is down, create attractor
+            if (this.keyboarder.isDown(this.keyboarder.Keys.a)) {
+                this.attractors.push(new Attractor(this, mousePos));
+            }
+            // C is down, create cannon
+            else if (this.keyboarder.isDown(this.keyboarder.Keys.c)) {
+                spawnCannon(mousePos);
+            }
+            // B is down, create body
+            else if (this.keyboarder.isDown(this.keyboarder.Keys.b)) {
+                spawnBody(mousePos, true);
+            }
+        }
+    };
+
+    this.canvas.addEventListener("mousedown", e => {
         let {clientX, clientY} = e;
-        let point = { x: clientX, y: clientY };
+        const point = pointUtils.toReal({ x: clientX, y: clientY });
+        mouseDown = true;
 
-        if (currentAttractor) {
-            currentAttractor.center = pointUtils.toReal(point);
+        let clickedObject = getClickedObject(point);
+
+        this.attractors.concat(this.cannons).forEach(object => object.selected = false);
+        if (clickedObject) {
+            clickedObject.selected = true;
         }
+        selectedObject = clickedObject;
+
+        processSelected();
+        processSpawning();
     });
 
-    canvas.addEventListener("mouseup", e => {
+    this.canvas.addEventListener("mouseup", () => {
+        mouseDown = false;
+        called = false;
+    });
+
+    this.canvas.addEventListener("mousemove", e => {
         let {clientX, clientY} = e;
-        let point = { x: clientX, y: clientY };
+        const point = pointUtils.toReal({ x: clientX, y: clientY });
+        mousePos = point;
 
-        if (currentAttractor) {
-            currentAttractor.center = pointUtils.toReal(point);
-        }
-
-        currentAttractor = null;
+        processSelected();
     });
 
+    this.keyboarder.on("keydown", () => {
+        processSelected();
+        processSpawning();
+        processBodyDelete();
+    });
+
+    this.keyboarder.on("keyup", () => {
+        processSelected();
+        processSpawning();
+        processBodyDelete();
+    });
 
     let tick = () => {
-        screen.clearRect(0, 0, this.size.x, this.size.y); //allows this.update() to draw vectors
+        this.screen.clearRect(0, 0, this.size.x, this.size.y); //allows this.update() to draw vectors
         this.update();
         this.draw();
         requestAnimationFrame(tick);
@@ -145,6 +283,14 @@ Game.prototype.pointInAttractor = function (point) {
     return null;
 };
 
+Game.prototype.computeSize = function() {
+    this.canvas.width = document.body.clientWidth;
+    this.canvas.height = document.body.clientHeight;
+
+    this.size = { x: this.canvas.width, y: this.canvas.height };
+    this.realSize = { x: constants.toReal(this.size.x), y: constants.toReal(this.size.y) };
+};
+
 Game.prototype.cannonNearPoint = function (point) {
     let distanceTo = (cannon) => Math.ceil(pointUtils.distanceBetween(point, cannon.center));
 
@@ -169,16 +315,16 @@ Game.prototype.update = function() {
     this.updatedAt = now;
 
     this.attractors.forEach(attractor => attractor.update());
+    this.attractors = this.attractors.filter(attractor => attractor.isAlive);
 
     this.bodies.forEach(body => body.update(timeSinceUpdate)); // Update must run before cleanup of dead bodies
     this.bodies = this.bodies.filter(body => body.isAlive);
 
     this.cannons.forEach(cannon => cannon.update());
+    this.cannons = this.cannons.filter(cannon => cannon.isAlive);
 };
 
 Game.prototype.draw = function() {
-    let screen = this.screen;
-
     this.deadBodies.forEach(deadBody => {
         canvasDraw.drawBody(deadBody);
     });
@@ -191,7 +337,7 @@ Game.prototype.draw = function() {
     this.cannons.forEach(canvasDraw.drawBody);
 
     canvasDraw.setColor("black");
-    screen.fillText("Bodies: " + this.bodies.length, 1, this.size.y);
+    this.screen.fillText("Bodies: " + this.bodies.length, 1, this.size.y);
 };
 
 Game.prototype.addBody = function(body) {
@@ -199,3 +345,4 @@ Game.prototype.addBody = function(body) {
 };
 
 window.addEventListener("DOMContentLoaded", () => { global.game = new Game(); });
+window.addEventListener("resize", () => { global.game.computeSize(); });

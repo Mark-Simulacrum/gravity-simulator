@@ -12,6 +12,7 @@
         "quotes": false,
         "curly": false,
         "no-var": true,
+        "no-alert": false,
         "no-use-before-define": false,
         "no-underscore-dangle": false,
         "no-multi-spaces": false,

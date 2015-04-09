@@ -4,7 +4,7 @@ let initNum = 1;
 function Attractor(game, center) {
     this.type = "attractor";
     this.id = initNum;
-    this.initNum = initNum;
+    this.isAlive = true;
 
     this.game = game;
     this.center = center;
@@ -15,8 +15,12 @@ function Attractor(game, center) {
     initNum++;
 }
 
+Attractor.prototype.calculateMass = function() {
+    this.mass = this.radius / constants.EarthRadius * constants.EarthMass;
+};
+
 Attractor.prototype.update = function () {
-    this.color = `hsl(${360 / this.game.attractors.length * this.initNum}, 100%, 50%)`;
+    this.color = `hsl(${360 / this.game.attractors.length * this.id}, 100%, 50%)`;
 };
 
 export default Attractor;
