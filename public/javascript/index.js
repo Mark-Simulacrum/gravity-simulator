@@ -105,6 +105,12 @@ function Game() {
         }
     });
 
+    Mousetrap.bind("d", () => {
+        if (mousePos && selectedObject) {
+            selectedObject.isAlive = false;
+        }
+    });
+
     Mousetrap.bind("+", () => {
         if (mousePos && selectedObject) {
             adjustObject(selectedObject, +1);
