@@ -65,7 +65,7 @@ Body.prototype.update = function(timeSinceUpdate) {
         );
     });
 
-    let planetsVector = vectors.reduce((vecA, vecB) => vecA.add(vecB));
+    let planetsVector = vectors.length > 0 ? vectors.reduce((vecA, vecB) => vecA.add(vecB)) : new Vector(0, 0, "N");
     let projectedVectors = planetsVector.projectionOnto(this.speed);
 
     let delta = {
