@@ -10,7 +10,9 @@
     "eslint": "^0.18.0",
     "lodash.find": "^3.2.0",
     "lodash.pick": "^3.1.0",
+    "lodash.throttle": "^3.0.2",
     "lodash.uniq": "^3.1.0",
+    "mousetrap": "^1.5.2",
     "webpack": "1"
   }
 }

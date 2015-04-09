@@ -1,4 +1,6 @@
 import {EventEmitter} from "events";
+import Mousetrap from "mousetrap";
+import throttle from "lodash.throttle";
 import find from "lodash.find";
 import uniq from "lodash.uniq";
 import pick from "lodash.pick";
@@ -13,47 +15,8 @@ import * as canvasDraw from "./canvasDraw";
 import * as constants from "./constants";
 import * as pointUtils from "./pointUtils";
 
-class Keyboarder extends EventEmitter {
-    constructor() {
-        super();
-
-        this.keyState = {};
-
-        this.Keys = {
-            shift: 16,
-            ctrl: 17,
-            keypadPlus: 107,
-            keypadMinus: 109,
-            equalSign: 187,
-            dash: 189,
-            a: 65,
-            b: 66,
-            c: 67,
-            d: 68,
-            m: 77,
-            t: 84
-        };
-
-        window.addEventListener("keydown", e => {
-            this.keyState[e.keyCode] = true;
-            this.emit("keydown", e);
-        });
-        window.addEventListener("keyup", e => {
-            this.keyState[e.keyCode] = false;
-            this.emit("keyup", e);
-        });
-    }
-    isDown(keyCode) {
-        return this.keyState[keyCode] === true;
-    }
-    isUp(keyCode) {
-        return this.keyState[keyCode] !== true; // handle the undefined case
-    }
-}
-
 function Game() {
     this.canvas = document.getElementById("canvas");
-    this.keyboarder = new Keyboarder();
 
     let openButton = document.querySelector("#open-button");
     let closeButton = document.querySelector("#close-button");
@@ -64,11 +27,9 @@ function Game() {
         else modal.style.display = "none";
     });
     closeButton.addEventListener("click", () => modal.style.display = "none");
-    // selectedItemDisplay.loadElements();
 
     this.canvas.style.position = "absolute";
     this.computeSize();
-    // selectedItemDisplay.select();
 
     // Get the drawing context.
     this.screen = this.canvas.getContext('2d');
@@ -120,7 +81,6 @@ function Game() {
     };
 
     let selectedObject;
-    let mouseDown = false;
     let mousePos;
 
     let adjustObject = (object, adjustment) => {
@@ -139,82 +99,65 @@ function Game() {
         }
     };
 
-    let processSelected = () => {
-        if (!mousePos || !selectedObject) return;
-
-        if (this.keyboarder.isDown(this.keyboarder.Keys.m)) {
+    Mousetrap.bind("m", () => {
+        if (mousePos && selectedObject) {
             selectedObject.center = mousePos;
-        } else if (
-            this.keyboarder.isDown(this.keyboarder.Keys.keypadPlus) ||
-            (this.keyboarder.isDown(this.keyboarder.Keys.equalSign) && this.keyboarder.isDown(this.keyboarder.Keys.shift))
-            ) {
-            adjustObject(selectedObject, 1);
-        } else if (
-            this.keyboarder.isDown(this.keyboarder.Keys.keypadMinus) ||
-            this.keyboarder.isDown(this.keyboarder.Keys.dash)
-            ) {
+        }
+    });
+
+    Mousetrap.bind("+", () => {
+        if (mousePos && selectedObject) {
+            adjustObject(selectedObject, +1);
+        }
+    });
+
+    Mousetrap.bind("-", () => {
+        if (mousePos && selectedObject) {
             adjustObject(selectedObject, -1);
-        } else if (
-            this.keyboarder.isDown(this.keyboarder.Keys.d) &&
-            this.keyboarder.isUp(this.keyboarder.Keys.shift)
-            ) {
-            selectedObject.isAlive = false;
-        } else if (
-            selectedObject.type === "cannon" &&
-            this.keyboarder.isDown(this.keyboarder.Keys.t)
-            ) {
+        }
+    });
+
+    Mousetrap.bind("t", () => {
+        if (mousePos && selectedObject && selectedObject.type === "cannon") { // Selected object is a cannon
             selectedObject.select(mousePos);
         }
-    };
+    });
 
-    let processBodyDelete = () => {
-        if (
-            this.keyboarder.isDown(this.keyboarder.Keys.shift) &&
-            this.keyboarder.isDown(this.keyboarder.Keys.d)
-            ) {
-            this.bodies = [];
+    Mousetrap.bind("shift+d", () => {
+        this.bodies = [];
+    });
+
+    let processSpawning = (type) => {
+        if (!mousePos || selectedObject) return;
+
+        if (type === "attractor") {
+            this.attractors.push(new Attractor(this, mousePos));
+        } else if (type === "cannon") {
+            spawnCannon(mousePos);
+        } else if (type === "body") {
+            spawnBody(mousePos, true);
         }
     };
 
-    // For the creation of the "how to do things" panel
-    // m: move attractors and cannons
-    // +: increase the rate at which cannons fire and the mass of attractors
-    // -: decrease the rate at which cannons fire and the mass of attractors
-    // d: delete the currently select object
-    // t: turn a cannon to point at the current mouse position
-    // shift+d: delete all bodies on screen
-    // ctrl+a: create an attractor at the current mouse coordinate
-    // ctrl+c: create a cannon at the current mouse coordinate
-    // ctrl+b: create a body at the current mouse coordinate
+    processSpawning = throttle(processSpawning, 100, { leading: true, trailing: false });
 
-    let called = false;
-    let processSpawning = () => {
-        if (called || !mousePos || !mouseDown || selectedObject) return;
+    Mousetrap.bind("a", () => {
+        console.log("attractor: a");
+        processSpawning("attractor");
+    });
 
-        called = true;
+    Mousetrap.bind("c", () => {
+        processSpawning("cannon");
+    });
 
-        // Ctrl is down, we may be about to spawn an object
-        if (this.keyboarder.isDown(this.keyboarder.Keys.ctrl)) {
-
-            // A is down, create attractor
-            if (this.keyboarder.isDown(this.keyboarder.Keys.a)) {
-                this.attractors.push(new Attractor(this, mousePos));
-            }
-            // C is down, create cannon
-            else if (this.keyboarder.isDown(this.keyboarder.Keys.c)) {
-                spawnCannon(mousePos);
-            }
-            // B is down, create body
-            else if (this.keyboarder.isDown(this.keyboarder.Keys.b)) {
-                spawnBody(mousePos, true);
-            }
-        }
-    };
+    Mousetrap.bind("b", () => {
+        processSpawning("body");
+    });
 
     this.canvas.addEventListener("mousedown", e => {
         let {clientX, clientY} = e;
         const point = pointUtils.toReal({ x: clientX, y: clientY });
-        mouseDown = true;
+        mousePos = point;
 
         let clickedObject = getClickedObject(point);
 
@@ -222,35 +165,14 @@ function Game() {
         if (clickedObject) {
             clickedObject.selected = true;
         }
+
         selectedObject = clickedObject;
-
-        processSelected();
-        processSpawning();
-    });
-
-    this.canvas.addEventListener("mouseup", () => {
-        mouseDown = false;
-        called = false;
     });
 
     this.canvas.addEventListener("mousemove", e => {
         let {clientX, clientY} = e;
         const point = pointUtils.toReal({ x: clientX, y: clientY });
         mousePos = point;
-
-        processSelected();
-    });
-
-    this.keyboarder.on("keydown", () => {
-        processSelected();
-        processSpawning();
-        processBodyDelete();
-    });
-
-    this.keyboarder.on("keyup", () => {
-        processSelected();
-        processSpawning();
-        processBodyDelete();
     });
 
     let tick = () => {
