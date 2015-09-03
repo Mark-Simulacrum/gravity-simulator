@@ -8,8 +8,9 @@ compile:
 	-rm -r out/bundle.js
 
 deploy:
+	git pull
 	git checkout gh-pages
-	git rebase -f master
+	git checkout master -- `git ls-tree --name-only -r master`
 	npm install
 	make compile
 	cp out/index.html ./index.html
