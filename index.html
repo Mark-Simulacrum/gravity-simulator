@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE HTML>
 <html>
 <head>
     <title>Gravity Simulator</title>
@@ -35,7 +35,6 @@
             z-index: 100;
         }
     </style>
-    <script type="text/javascript" src="built/bundle.js"></script>
 </head>
 <body>
     <table id="directions">
@@ -44,7 +43,9 @@
         <tr><td>-</td><td> decrease the rate at which cannons fire and the mass of attractors</td></tr>
         <tr><td>d</td><td> delete the currently select object</td></tr>
         <tr><td>t</td><td> turn a cannon to point at the current mouse position</td></tr>
-        <tr><td>shift+d</td><td> delete all bodies on screen</td></tr>
+        <tr><td>shift+b</td><td> delete all bodies on screen</td></tr>
+        <tr><td>shift+c</td><td> delete all cannons on screen</td></tr>
+        <tr><td>shift+a</td><td> delete all attractors on screen</td></tr>
         <tr><td>a</td><td> create an attractor at the current mouse coordinate</td></tr>
         <tr><td>b</td><td> create a body at the current mouse coordinate</td></tr>
         <tr><td>c</td><td> create a cannon at the current mouse coordinate</td></tr>
@@ -53,4 +54,5911 @@
     <button id="open-button">Open Keyboard Information</button>
     <canvas id="canvas"></canvas>
 </body>
-</html>
+</html><script>
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+function EventEmitter() {
+  this._events = this._events || {};
+  this._maxListeners = this._maxListeners || undefined;
+}
+module.exports = EventEmitter;
+
+// Backwards-compat with node 0.10.x
+EventEmitter.EventEmitter = EventEmitter;
+
+EventEmitter.prototype._events = undefined;
+EventEmitter.prototype._maxListeners = undefined;
+
+// By default EventEmitters will print a warning if more than 10 listeners are
+// added to it. This is a useful default which helps finding memory leaks.
+EventEmitter.defaultMaxListeners = 10;
+
+// Obviously not all Emitters should be limited to 10. This function allows
+// that to be increased. Set to zero for unlimited.
+EventEmitter.prototype.setMaxListeners = function(n) {
+  if (!isNumber(n) || n < 0 || isNaN(n))
+    throw TypeError('n must be a positive number');
+  this._maxListeners = n;
+  return this;
+};
+
+EventEmitter.prototype.emit = function(type) {
+  var er, handler, len, args, i, listeners;
+
+  if (!this._events)
+    this._events = {};
+
+  // If there is no 'error' event listener then throw.
+  if (type === 'error') {
+    if (!this._events.error ||
+        (isObject(this._events.error) && !this._events.error.length)) {
+      er = arguments[1];
+      if (er instanceof Error) {
+        throw er; // Unhandled 'error' event
+      }
+      throw TypeError('Uncaught, unspecified "error" event.');
+    }
+  }
+
+  handler = this._events[type];
+
+  if (isUndefined(handler))
+    return false;
+
+  if (isFunction(handler)) {
+    switch (arguments.length) {
+      // fast cases
+      case 1:
+        handler.call(this);
+        break;
+      case 2:
+        handler.call(this, arguments[1]);
+        break;
+      case 3:
+        handler.call(this, arguments[1], arguments[2]);
+        break;
+      // slower
+      default:
+        len = arguments.length;
+        args = new Array(len - 1);
+        for (i = 1; i < len; i++)
+          args[i - 1] = arguments[i];
+        handler.apply(this, args);
+    }
+  } else if (isObject(handler)) {
+    len = arguments.length;
+    args = new Array(len - 1);
+    for (i = 1; i < len; i++)
+      args[i - 1] = arguments[i];
+
+    listeners = handler.slice();
+    len = listeners.length;
+    for (i = 0; i < len; i++)
+      listeners[i].apply(this, args);
+  }
+
+  return true;
+};
+
+EventEmitter.prototype.addListener = function(type, listener) {
+  var m;
+
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  if (!this._events)
+    this._events = {};
+
+  // To avoid recursion in the case that type === "newListener"! Before
+  // adding it to the listeners, first emit "newListener".
+  if (this._events.newListener)
+    this.emit('newListener', type,
+              isFunction(listener.listener) ?
+              listener.listener : listener);
+
+  if (!this._events[type])
+    // Optimize the case of one listener. Don't need the extra array object.
+    this._events[type] = listener;
+  else if (isObject(this._events[type]))
+    // If we've already got an array, just append.
+    this._events[type].push(listener);
+  else
+    // Adding the second element, need to change to array.
+    this._events[type] = [this._events[type], listener];
+
+  // Check for listener leak
+  if (isObject(this._events[type]) && !this._events[type].warned) {
+    var m;
+    if (!isUndefined(this._maxListeners)) {
+      m = this._maxListeners;
+    } else {
+      m = EventEmitter.defaultMaxListeners;
+    }
+
+    if (m && m > 0 && this._events[type].length > m) {
+      this._events[type].warned = true;
+      console.error('(node) warning: possible EventEmitter memory ' +
+                    'leak detected. %d listeners added. ' +
+                    'Use emitter.setMaxListeners() to increase limit.',
+                    this._events[type].length);
+      if (typeof console.trace === 'function') {
+        // not supported in IE 10
+        console.trace();
+      }
+    }
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+
+EventEmitter.prototype.once = function(type, listener) {
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  var fired = false;
+
+  function g() {
+    this.removeListener(type, g);
+
+    if (!fired) {
+      fired = true;
+      listener.apply(this, arguments);
+    }
+  }
+
+  g.listener = listener;
+  this.on(type, g);
+
+  return this;
+};
+
+// emits a 'removeListener' event iff the listener was removed
+EventEmitter.prototype.removeListener = function(type, listener) {
+  var list, position, length, i;
+
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  if (!this._events || !this._events[type])
+    return this;
+
+  list = this._events[type];
+  length = list.length;
+  position = -1;
+
+  if (list === listener ||
+      (isFunction(list.listener) && list.listener === listener)) {
+    delete this._events[type];
+    if (this._events.removeListener)
+      this.emit('removeListener', type, listener);
+
+  } else if (isObject(list)) {
+    for (i = length; i-- > 0;) {
+      if (list[i] === listener ||
+          (list[i].listener && list[i].listener === listener)) {
+        position = i;
+        break;
+      }
+    }
+
+    if (position < 0)
+      return this;
+
+    if (list.length === 1) {
+      list.length = 0;
+      delete this._events[type];
+    } else {
+      list.splice(position, 1);
+    }
+
+    if (this._events.removeListener)
+      this.emit('removeListener', type, listener);
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.removeAllListeners = function(type) {
+  var key, listeners;
+
+  if (!this._events)
+    return this;
+
+  // not listening for removeListener, no need to emit
+  if (!this._events.removeListener) {
+    if (arguments.length === 0)
+      this._events = {};
+    else if (this._events[type])
+      delete this._events[type];
+    return this;
+  }
+
+  // emit removeListener for all listeners on all events
+  if (arguments.length === 0) {
+    for (key in this._events) {
+      if (key === 'removeListener') continue;
+      this.removeAllListeners(key);
+    }
+    this.removeAllListeners('removeListener');
+    this._events = {};
+    return this;
+  }
+
+  listeners = this._events[type];
+
+  if (isFunction(listeners)) {
+    this.removeListener(type, listeners);
+  } else {
+    // LIFO order
+    while (listeners.length)
+      this.removeListener(type, listeners[listeners.length - 1]);
+  }
+  delete this._events[type];
+
+  return this;
+};
+
+EventEmitter.prototype.listeners = function(type) {
+  var ret;
+  if (!this._events || !this._events[type])
+    ret = [];
+  else if (isFunction(this._events[type]))
+    ret = [this._events[type]];
+  else
+    ret = this._events[type].slice();
+  return ret;
+};
+
+EventEmitter.listenerCount = function(emitter, type) {
+  var ret;
+  if (!emitter._events || !emitter._events[type])
+    ret = 0;
+  else if (isFunction(emitter._events[type]))
+    ret = 1;
+  else
+    ret = emitter._events[type].length;
+  return ret;
+};
+
+function isFunction(arg) {
+  return typeof arg === 'function';
+}
+
+function isNumber(arg) {
+  return typeof arg === 'number';
+}
+
+function isObject(arg) {
+  return typeof arg === 'object' && arg !== null;
+}
+
+function isUndefined(arg) {
+  return arg === void 0;
+}
+
+},{}],2:[function(require,module,exports){
+/**
+ * lodash 3.2.1 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+var baseCallback = require('lodash._basecallback'),
+    baseEach = require('lodash._baseeach'),
+    baseFind = require('lodash._basefind'),
+    baseFindIndex = require('lodash._basefindindex'),
+    isArray = require('lodash.isarray');
+
+/**
+ * Creates a `_.find` or `_.findLast` function.
+ *
+ * @private
+ * @param {Function} eachFunc The function to iterate over a collection.
+ * @param {boolean} [fromRight] Specify iterating from right to left.
+ * @returns {Function} Returns the new find function.
+ */
+function createFind(eachFunc, fromRight) {
+  return function(collection, predicate, thisArg) {
+    predicate = baseCallback(predicate, thisArg, 3);
+    if (isArray(collection)) {
+      var index = baseFindIndex(collection, predicate, fromRight);
+      return index > -1 ? collection[index] : undefined;
+    }
+    return baseFind(collection, predicate, eachFunc);
+  };
+}
+
+/**
+ * Iterates over elements of `collection`, returning the first element
+ * `predicate` returns truthy for. The predicate is bound to `thisArg` and
+ * invoked with three arguments: (value, index|key, collection).
+ *
+ * If a property name is provided for `predicate` the created `_.property`
+ * style callback returns the property value of the given element.
+ *
+ * If a value is also provided for `thisArg` the created `_.matchesProperty`
+ * style callback returns `true` for elements that have a matching property
+ * value, else `false`.
+ *
+ * If an object is provided for `predicate` the created `_.matches` style
+ * callback returns `true` for elements that have the properties of the given
+ * object, else `false`.
+ *
+ * @static
+ * @memberOf _
+ * @alias detect
+ * @category Collection
+ * @param {Array|Object|string} collection The collection to search.
+ * @param {Function|Object|string} [predicate=_.identity] The function invoked
+ *  per iteration.
+ * @param {*} [thisArg] The `this` binding of `predicate`.
+ * @returns {*} Returns the matched element, else `undefined`.
+ * @example
+ *
+ * var users = [
+ *   { 'user': 'barney',  'age': 36, 'active': true },
+ *   { 'user': 'fred',    'age': 40, 'active': false },
+ *   { 'user': 'pebbles', 'age': 1,  'active': true }
+ * ];
+ *
+ * _.result(_.find(users, function(chr) {
+ *   return chr.age < 40;
+ * }), 'user');
+ * // => 'barney'
+ *
+ * // using the `_.matches` callback shorthand
+ * _.result(_.find(users, { 'age': 1, 'active': true }), 'user');
+ * // => 'pebbles'
+ *
+ * // using the `_.matchesProperty` callback shorthand
+ * _.result(_.find(users, 'active', false), 'user');
+ * // => 'fred'
+ *
+ * // using the `_.property` callback shorthand
+ * _.result(_.find(users, 'active'), 'user');
+ * // => 'barney'
+ */
+var find = createFind(baseEach);
+
+module.exports = find;
+
+},{"lodash._basecallback":3,"lodash._baseeach":8,"lodash._basefind":9,"lodash._basefindindex":10,"lodash.isarray":11}],3:[function(require,module,exports){
+/**
+ * lodash 3.3.1 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+var baseIsEqual = require('lodash._baseisequal'),
+    bindCallback = require('lodash._bindcallback'),
+    isArray = require('lodash.isarray'),
+    pairs = require('lodash.pairs');
+
+/** Used to match property names within property paths. */
+var reIsDeepProp = /\.|\[(?:[^[\]]*|(["'])(?:(?!\1)[^\n\\]|\\.)*?\1)\]/,
+    reIsPlainProp = /^\w*$/,
+    rePropName = /[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\n\\]|\\.)*?)\2)\]/g;
+
+/** Used to match backslashes in property paths. */
+var reEscapeChar = /\\(\\)?/g;
+
+/**
+ * Converts `value` to a string if it's not one. An empty string is returned
+ * for `null` or `undefined` values.
+ *
+ * @private
+ * @param {*} value The value to process.
+ * @returns {string} Returns the string.
+ */
+function baseToString(value) {
+  return value == null ? '' : (value + '');
+}
+
+/**
+ * The base implementation of `_.callback` which supports specifying the
+ * number of arguments to provide to `func`.
+ *
+ * @private
+ * @param {*} [func=_.identity] The value to convert to a callback.
+ * @param {*} [thisArg] The `this` binding of `func`.
+ * @param {number} [argCount] The number of arguments to provide to `func`.
+ * @returns {Function} Returns the callback.
+ */
+function baseCallback(func, thisArg, argCount) {
+  var type = typeof func;
+  if (type == 'function') {
+    return thisArg === undefined
+      ? func
+      : bindCallback(func, thisArg, argCount);
+  }
+  if (func == null) {
+    return identity;
+  }
+  if (type == 'object') {
+    return baseMatches(func);
+  }
+  return thisArg === undefined
+    ? property(func)
+    : baseMatchesProperty(func, thisArg);
+}
+
+/**
+ * The base implementation of `get` without support for string paths
+ * and default values.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @param {Array} path The path of the property to get.
+ * @param {string} [pathKey] The key representation of path.
+ * @returns {*} Returns the resolved value.
+ */
+function baseGet(object, path, pathKey) {
+  if (object == null) {
+    return;
+  }
+  if (pathKey !== undefined && pathKey in toObject(object)) {
+    path = [pathKey];
+  }
+  var index = 0,
+      length = path.length;
+
+  while (object != null && index < length) {
+    object = object[path[index++]];
+  }
+  return (index && index == length) ? object : undefined;
+}
+
+/**
+ * The base implementation of `_.isMatch` without support for callback
+ * shorthands and `this` binding.
+ *
+ * @private
+ * @param {Object} object The object to inspect.
+ * @param {Array} matchData The propery names, values, and compare flags to match.
+ * @param {Function} [customizer] The function to customize comparing objects.
+ * @returns {boolean} Returns `true` if `object` is a match, else `false`.
+ */
+function baseIsMatch(object, matchData, customizer) {
+  var index = matchData.length,
+      length = index,
+      noCustomizer = !customizer;
+
+  if (object == null) {
+    return !length;
+  }
+  object = toObject(object);
+  while (index--) {
+    var data = matchData[index];
+    if ((noCustomizer && data[2])
+          ? data[1] !== object[data[0]]
+          : !(data[0] in object)
+        ) {
+      return false;
+    }
+  }
+  while (++index < length) {
+    data = matchData[index];
+    var key = data[0],
+        objValue = object[key],
+        srcValue = data[1];
+
+    if (noCustomizer && data[2]) {
+      if (objValue === undefined && !(key in object)) {
+        return false;
+      }
+    } else {
+      var result = customizer ? customizer(objValue, srcValue, key) : undefined;
+      if (!(result === undefined ? baseIsEqual(srcValue, objValue, customizer, true) : result)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * The base implementation of `_.matches` which does not clone `source`.
+ *
+ * @private
+ * @param {Object} source The object of property values to match.
+ * @returns {Function} Returns the new function.
+ */
+function baseMatches(source) {
+  var matchData = getMatchData(source);
+  if (matchData.length == 1 && matchData[0][2]) {
+    var key = matchData[0][0],
+        value = matchData[0][1];
+
+    return function(object) {
+      if (object == null) {
+        return false;
+      }
+      return object[key] === value && (value !== undefined || (key in toObject(object)));
+    };
+  }
+  return function(object) {
+    return baseIsMatch(object, matchData);
+  };
+}
+
+/**
+ * The base implementation of `_.matchesProperty` which does not clone `srcValue`.
+ *
+ * @private
+ * @param {string} path The path of the property to get.
+ * @param {*} srcValue The value to compare.
+ * @returns {Function} Returns the new function.
+ */
+function baseMatchesProperty(path, srcValue) {
+  var isArr = isArray(path),
+      isCommon = isKey(path) && isStrictComparable(srcValue),
+      pathKey = (path + '');
+
+  path = toPath(path);
+  return function(object) {
+    if (object == null) {
+      return false;
+    }
+    var key = pathKey;
+    object = toObject(object);
+    if ((isArr || !isCommon) && !(key in object)) {
+      object = path.length == 1 ? object : baseGet(object, baseSlice(path, 0, -1));
+      if (object == null) {
+        return false;
+      }
+      key = last(path);
+      object = toObject(object);
+    }
+    return object[key] === srcValue
+      ? (srcValue !== undefined || (key in object))
+      : baseIsEqual(srcValue, object[key], undefined, true);
+  };
+}
+
+/**
+ * The base implementation of `_.property` without support for deep paths.
+ *
+ * @private
+ * @param {string} key The key of the property to get.
+ * @returns {Function} Returns the new function.
+ */
+function baseProperty(key) {
+  return function(object) {
+    return object == null ? undefined : object[key];
+  };
+}
+
+/**
+ * A specialized version of `baseProperty` which supports deep paths.
+ *
+ * @private
+ * @param {Array|string} path The path of the property to get.
+ * @returns {Function} Returns the new function.
+ */
+function basePropertyDeep(path) {
+  var pathKey = (path + '');
+  path = toPath(path);
+  return function(object) {
+    return baseGet(object, path, pathKey);
+  };
+}
+
+/**
+ * The base implementation of `_.slice` without an iteratee call guard.
+ *
+ * @private
+ * @param {Array} array The array to slice.
+ * @param {number} [start=0] The start position.
+ * @param {number} [end=array.length] The end position.
+ * @returns {Array} Returns the slice of `array`.
+ */
+function baseSlice(array, start, end) {
+  var index = -1,
+      length = array.length;
+
+  start = start == null ? 0 : (+start || 0);
+  if (start < 0) {
+    start = -start > length ? 0 : (length + start);
+  }
+  end = (end === undefined || end > length) ? length : (+end || 0);
+  if (end < 0) {
+    end += length;
+  }
+  length = start > end ? 0 : ((end - start) >>> 0);
+  start >>>= 0;
+
+  var result = Array(length);
+  while (++index < length) {
+    result[index] = array[index + start];
+  }
+  return result;
+}
+
+/**
+ * Gets the propery names, values, and compare flags of `object`.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @returns {Array} Returns the match data of `object`.
+ */
+function getMatchData(object) {
+  var result = pairs(object),
+      length = result.length;
+
+  while (length--) {
+    result[length][2] = isStrictComparable(result[length][1]);
+  }
+  return result;
+}
+
+/**
+ * Checks if `value` is a property name and not a property path.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @param {Object} [object] The object to query keys on.
+ * @returns {boolean} Returns `true` if `value` is a property name, else `false`.
+ */
+function isKey(value, object) {
+  var type = typeof value;
+  if ((type == 'string' && reIsPlainProp.test(value)) || type == 'number') {
+    return true;
+  }
+  if (isArray(value)) {
+    return false;
+  }
+  var result = !reIsDeepProp.test(value);
+  return result || (object != null && value in toObject(object));
+}
+
+/**
+ * Checks if `value` is suitable for strict equality comparisons, i.e. `===`.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` if suitable for strict
+ *  equality comparisons, else `false`.
+ */
+function isStrictComparable(value) {
+  return value === value && !isObject(value);
+}
+
+/**
+ * Converts `value` to an object if it's not one.
+ *
+ * @private
+ * @param {*} value The value to process.
+ * @returns {Object} Returns the object.
+ */
+function toObject(value) {
+  return isObject(value) ? value : Object(value);
+}
+
+/**
+ * Converts `value` to property path array if it's not one.
+ *
+ * @private
+ * @param {*} value The value to process.
+ * @returns {Array} Returns the property path array.
+ */
+function toPath(value) {
+  if (isArray(value)) {
+    return value;
+  }
+  var result = [];
+  baseToString(value).replace(rePropName, function(match, number, quote, string) {
+    result.push(quote ? string.replace(reEscapeChar, '$1') : (number || match));
+  });
+  return result;
+}
+
+/**
+ * Gets the last element of `array`.
+ *
+ * @static
+ * @memberOf _
+ * @category Array
+ * @param {Array} array The array to query.
+ * @returns {*} Returns the last element of `array`.
+ * @example
+ *
+ * _.last([1, 2, 3]);
+ * // => 3
+ */
+function last(array) {
+  var length = array ? array.length : 0;
+  return length ? array[length - 1] : undefined;
+}
+
+/**
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
+ * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(1);
+ * // => false
+ */
+function isObject(value) {
+  // Avoid a V8 JIT bug in Chrome 19-20.
+  // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+/**
+ * This method returns the first argument provided to it.
+ *
+ * @static
+ * @memberOf _
+ * @category Utility
+ * @param {*} value Any value.
+ * @returns {*} Returns `value`.
+ * @example
+ *
+ * var object = { 'user': 'fred' };
+ *
+ * _.identity(object) === object;
+ * // => true
+ */
+function identity(value) {
+  return value;
+}
+
+/**
+ * Creates a function that returns the property value at `path` on a
+ * given object.
+ *
+ * @static
+ * @memberOf _
+ * @category Utility
+ * @param {Array|string} path The path of the property to get.
+ * @returns {Function} Returns the new function.
+ * @example
+ *
+ * var objects = [
+ *   { 'a': { 'b': { 'c': 2 } } },
+ *   { 'a': { 'b': { 'c': 1 } } }
+ * ];
+ *
+ * _.map(objects, _.property('a.b.c'));
+ * // => [2, 1]
+ *
+ * _.pluck(_.sortBy(objects, _.property(['a', 'b', 'c'])), 'a.b.c');
+ * // => [1, 2]
+ */
+function property(path) {
+  return isKey(path) ? baseProperty(path) : basePropertyDeep(path);
+}
+
+module.exports = baseCallback;
+
+},{"lodash._baseisequal":4,"lodash._bindcallback":6,"lodash.isarray":11,"lodash.pairs":7}],4:[function(require,module,exports){
+/**
+ * lodash 3.0.7 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+var isArray = require('lodash.isarray'),
+    isTypedArray = require('lodash.istypedarray'),
+    keys = require('lodash.keys');
+
+/** `Object#toString` result references. */
+var argsTag = '[object Arguments]',
+    arrayTag = '[object Array]',
+    boolTag = '[object Boolean]',
+    dateTag = '[object Date]',
+    errorTag = '[object Error]',
+    numberTag = '[object Number]',
+    objectTag = '[object Object]',
+    regexpTag = '[object RegExp]',
+    stringTag = '[object String]';
+
+/**
+ * Checks if `value` is object-like.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ */
+function isObjectLike(value) {
+  return !!value && typeof value == 'object';
+}
+
+/** Used for native method references. */
+var objectProto = Object.prototype;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/**
+ * Used to resolve the [`toStringTag`](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-object.prototype.tostring)
+ * of values.
+ */
+var objToString = objectProto.toString;
+
+/**
+ * A specialized version of `_.some` for arrays without support for callback
+ * shorthands and `this` binding.
+ *
+ * @private
+ * @param {Array} array The array to iterate over.
+ * @param {Function} predicate The function invoked per iteration.
+ * @returns {boolean} Returns `true` if any element passes the predicate check,
+ *  else `false`.
+ */
+function arraySome(array, predicate) {
+  var index = -1,
+      length = array.length;
+
+  while (++index < length) {
+    if (predicate(array[index], index, array)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * The base implementation of `_.isEqual` without support for `this` binding
+ * `customizer` functions.
+ *
+ * @private
+ * @param {*} value The value to compare.
+ * @param {*} other The other value to compare.
+ * @param {Function} [customizer] The function to customize comparing values.
+ * @param {boolean} [isLoose] Specify performing partial comparisons.
+ * @param {Array} [stackA] Tracks traversed `value` objects.
+ * @param {Array} [stackB] Tracks traversed `other` objects.
+ * @returns {boolean} Returns `true` if the values are equivalent, else `false`.
+ */
+function baseIsEqual(value, other, customizer, isLoose, stackA, stackB) {
+  if (value === other) {
+    return true;
+  }
+  if (value == null || other == null || (!isObject(value) && !isObjectLike(other))) {
+    return value !== value && other !== other;
+  }
+  return baseIsEqualDeep(value, other, baseIsEqual, customizer, isLoose, stackA, stackB);
+}
+
+/**
+ * A specialized version of `baseIsEqual` for arrays and objects which performs
+ * deep comparisons and tracks traversed objects enabling objects with circular
+ * references to be compared.
+ *
+ * @private
+ * @param {Object} object The object to compare.
+ * @param {Object} other The other object to compare.
+ * @param {Function} equalFunc The function to determine equivalents of values.
+ * @param {Function} [customizer] The function to customize comparing objects.
+ * @param {boolean} [isLoose] Specify performing partial comparisons.
+ * @param {Array} [stackA=[]] Tracks traversed `value` objects.
+ * @param {Array} [stackB=[]] Tracks traversed `other` objects.
+ * @returns {boolean} Returns `true` if the objects are equivalent, else `false`.
+ */
+function baseIsEqualDeep(object, other, equalFunc, customizer, isLoose, stackA, stackB) {
+  var objIsArr = isArray(object),
+      othIsArr = isArray(other),
+      objTag = arrayTag,
+      othTag = arrayTag;
+
+  if (!objIsArr) {
+    objTag = objToString.call(object);
+    if (objTag == argsTag) {
+      objTag = objectTag;
+    } else if (objTag != objectTag) {
+      objIsArr = isTypedArray(object);
+    }
+  }
+  if (!othIsArr) {
+    othTag = objToString.call(other);
+    if (othTag == argsTag) {
+      othTag = objectTag;
+    } else if (othTag != objectTag) {
+      othIsArr = isTypedArray(other);
+    }
+  }
+  var objIsObj = objTag == objectTag,
+      othIsObj = othTag == objectTag,
+      isSameTag = objTag == othTag;
+
+  if (isSameTag && !(objIsArr || objIsObj)) {
+    return equalByTag(object, other, objTag);
+  }
+  if (!isLoose) {
+    var objIsWrapped = objIsObj && hasOwnProperty.call(object, '__wrapped__'),
+        othIsWrapped = othIsObj && hasOwnProperty.call(other, '__wrapped__');
+
+    if (objIsWrapped || othIsWrapped) {
+      return equalFunc(objIsWrapped ? object.value() : object, othIsWrapped ? other.value() : other, customizer, isLoose, stackA, stackB);
+    }
+  }
+  if (!isSameTag) {
+    return false;
+  }
+  // Assume cyclic values are equal.
+  // For more information on detecting circular references see https://es5.github.io/#JO.
+  stackA || (stackA = []);
+  stackB || (stackB = []);
+
+  var length = stackA.length;
+  while (length--) {
+    if (stackA[length] == object) {
+      return stackB[length] == other;
+    }
+  }
+  // Add `object` and `other` to the stack of traversed objects.
+  stackA.push(object);
+  stackB.push(other);
+
+  var result = (objIsArr ? equalArrays : equalObjects)(object, other, equalFunc, customizer, isLoose, stackA, stackB);
+
+  stackA.pop();
+  stackB.pop();
+
+  return result;
+}
+
+/**
+ * A specialized version of `baseIsEqualDeep` for arrays with support for
+ * partial deep comparisons.
+ *
+ * @private
+ * @param {Array} array The array to compare.
+ * @param {Array} other The other array to compare.
+ * @param {Function} equalFunc The function to determine equivalents of values.
+ * @param {Function} [customizer] The function to customize comparing arrays.
+ * @param {boolean} [isLoose] Specify performing partial comparisons.
+ * @param {Array} [stackA] Tracks traversed `value` objects.
+ * @param {Array} [stackB] Tracks traversed `other` objects.
+ * @returns {boolean} Returns `true` if the arrays are equivalent, else `false`.
+ */
+function equalArrays(array, other, equalFunc, customizer, isLoose, stackA, stackB) {
+  var index = -1,
+      arrLength = array.length,
+      othLength = other.length;
+
+  if (arrLength != othLength && !(isLoose && othLength > arrLength)) {
+    return false;
+  }
+  // Ignore non-index properties.
+  while (++index < arrLength) {
+    var arrValue = array[index],
+        othValue = other[index],
+        result = customizer ? customizer(isLoose ? othValue : arrValue, isLoose ? arrValue : othValue, index) : undefined;
+
+    if (result !== undefined) {
+      if (result) {
+        continue;
+      }
+      return false;
+    }
+    // Recursively compare arrays (susceptible to call stack limits).
+    if (isLoose) {
+      if (!arraySome(other, function(othValue) {
+            return arrValue === othValue || equalFunc(arrValue, othValue, customizer, isLoose, stackA, stackB);
+          })) {
+        return false;
+      }
+    } else if (!(arrValue === othValue || equalFunc(arrValue, othValue, customizer, isLoose, stackA, stackB))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * A specialized version of `baseIsEqualDeep` for comparing objects of
+ * the same `toStringTag`.
+ *
+ * **Note:** This function only supports comparing values with tags of
+ * `Boolean`, `Date`, `Error`, `Number`, `RegExp`, or `String`.
+ *
+ * @private
+ * @param {Object} value The object to compare.
+ * @param {Object} other The other object to compare.
+ * @param {string} tag The `toStringTag` of the objects to compare.
+ * @returns {boolean} Returns `true` if the objects are equivalent, else `false`.
+ */
+function equalByTag(object, other, tag) {
+  switch (tag) {
+    case boolTag:
+    case dateTag:
+      // Coerce dates and booleans to numbers, dates to milliseconds and booleans
+      // to `1` or `0` treating invalid dates coerced to `NaN` as not equal.
+      return +object == +other;
+
+    case errorTag:
+      return object.name == other.name && object.message == other.message;
+
+    case numberTag:
+      // Treat `NaN` vs. `NaN` as equal.
+      return (object != +object)
+        ? other != +other
+        : object == +other;
+
+    case regexpTag:
+    case stringTag:
+      // Coerce regexes to strings and treat strings primitives and string
+      // objects as equal. See https://es5.github.io/#x15.10.6.4 for more details.
+      return object == (other + '');
+  }
+  return false;
+}
+
+/**
+ * A specialized version of `baseIsEqualDeep` for objects with support for
+ * partial deep comparisons.
+ *
+ * @private
+ * @param {Object} object The object to compare.
+ * @param {Object} other The other object to compare.
+ * @param {Function} equalFunc The function to determine equivalents of values.
+ * @param {Function} [customizer] The function to customize comparing values.
+ * @param {boolean} [isLoose] Specify performing partial comparisons.
+ * @param {Array} [stackA] Tracks traversed `value` objects.
+ * @param {Array} [stackB] Tracks traversed `other` objects.
+ * @returns {boolean} Returns `true` if the objects are equivalent, else `false`.
+ */
+function equalObjects(object, other, equalFunc, customizer, isLoose, stackA, stackB) {
+  var objProps = keys(object),
+      objLength = objProps.length,
+      othProps = keys(other),
+      othLength = othProps.length;
+
+  if (objLength != othLength && !isLoose) {
+    return false;
+  }
+  var index = objLength;
+  while (index--) {
+    var key = objProps[index];
+    if (!(isLoose ? key in other : hasOwnProperty.call(other, key))) {
+      return false;
+    }
+  }
+  var skipCtor = isLoose;
+  while (++index < objLength) {
+    key = objProps[index];
+    var objValue = object[key],
+        othValue = other[key],
+        result = customizer ? customizer(isLoose ? othValue : objValue, isLoose? objValue : othValue, key) : undefined;
+
+    // Recursively compare objects (susceptible to call stack limits).
+    if (!(result === undefined ? equalFunc(objValue, othValue, customizer, isLoose, stackA, stackB) : result)) {
+      return false;
+    }
+    skipCtor || (skipCtor = key == 'constructor');
+  }
+  if (!skipCtor) {
+    var objCtor = object.constructor,
+        othCtor = other.constructor;
+
+    // Non `Object` object instances with different constructors are not equal.
+    if (objCtor != othCtor &&
+        ('constructor' in object && 'constructor' in other) &&
+        !(typeof objCtor == 'function' && objCtor instanceof objCtor &&
+          typeof othCtor == 'function' && othCtor instanceof othCtor)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
+ * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(1);
+ * // => false
+ */
+function isObject(value) {
+  // Avoid a V8 JIT bug in Chrome 19-20.
+  // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+module.exports = baseIsEqual;
+
+},{"lodash.isarray":11,"lodash.istypedarray":5,"lodash.keys":12}],5:[function(require,module,exports){
+/**
+ * lodash 3.0.2 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+
+/** `Object#toString` result references. */
+var argsTag = '[object Arguments]',
+    arrayTag = '[object Array]',
+    boolTag = '[object Boolean]',
+    dateTag = '[object Date]',
+    errorTag = '[object Error]',
+    funcTag = '[object Function]',
+    mapTag = '[object Map]',
+    numberTag = '[object Number]',
+    objectTag = '[object Object]',
+    regexpTag = '[object RegExp]',
+    setTag = '[object Set]',
+    stringTag = '[object String]',
+    weakMapTag = '[object WeakMap]';
+
+var arrayBufferTag = '[object ArrayBuffer]',
+    float32Tag = '[object Float32Array]',
+    float64Tag = '[object Float64Array]',
+    int8Tag = '[object Int8Array]',
+    int16Tag = '[object Int16Array]',
+    int32Tag = '[object Int32Array]',
+    uint8Tag = '[object Uint8Array]',
+    uint8ClampedTag = '[object Uint8ClampedArray]',
+    uint16Tag = '[object Uint16Array]',
+    uint32Tag = '[object Uint32Array]';
+
+/** Used to identify `toStringTag` values of typed arrays. */
+var typedArrayTags = {};
+typedArrayTags[float32Tag] = typedArrayTags[float64Tag] =
+typedArrayTags[int8Tag] = typedArrayTags[int16Tag] =
+typedArrayTags[int32Tag] = typedArrayTags[uint8Tag] =
+typedArrayTags[uint8ClampedTag] = typedArrayTags[uint16Tag] =
+typedArrayTags[uint32Tag] = true;
+typedArrayTags[argsTag] = typedArrayTags[arrayTag] =
+typedArrayTags[arrayBufferTag] = typedArrayTags[boolTag] =
+typedArrayTags[dateTag] = typedArrayTags[errorTag] =
+typedArrayTags[funcTag] = typedArrayTags[mapTag] =
+typedArrayTags[numberTag] = typedArrayTags[objectTag] =
+typedArrayTags[regexpTag] = typedArrayTags[setTag] =
+typedArrayTags[stringTag] = typedArrayTags[weakMapTag] = false;
+
+/**
+ * Checks if `value` is object-like.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ */
+function isObjectLike(value) {
+  return !!value && typeof value == 'object';
+}
+
+/** Used for native method references. */
+var objectProto = Object.prototype;
+
+/**
+ * Used to resolve the [`toStringTag`](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-object.prototype.tostring)
+ * of values.
+ */
+var objToString = objectProto.toString;
+
+/**
+ * Used as the [maximum length](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-number.max_safe_integer)
+ * of an array-like value.
+ */
+var MAX_SAFE_INTEGER = 9007199254740991;
+
+/**
+ * Checks if `value` is a valid array-like length.
+ *
+ * **Note:** This function is based on [`ToLength`](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength).
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a valid length, else `false`.
+ */
+function isLength(value) {
+  return typeof value == 'number' && value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
+}
+
+/**
+ * Checks if `value` is classified as a typed array.
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is correctly classified, else `false`.
+ * @example
+ *
+ * _.isTypedArray(new Uint8Array);
+ * // => true
+ *
+ * _.isTypedArray([]);
+ * // => false
+ */
+function isTypedArray(value) {
+  return isObjectLike(value) && isLength(value.length) && !!typedArrayTags[objToString.call(value)];
+}
+
+module.exports = isTypedArray;
+
+},{}],6:[function(require,module,exports){
+/**
+ * lodash 3.0.1 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+
+/**
+ * A specialized version of `baseCallback` which only supports `this` binding
+ * and specifying the number of arguments to provide to `func`.
+ *
+ * @private
+ * @param {Function} func The function to bind.
+ * @param {*} thisArg The `this` binding of `func`.
+ * @param {number} [argCount] The number of arguments to provide to `func`.
+ * @returns {Function} Returns the callback.
+ */
+function bindCallback(func, thisArg, argCount) {
+  if (typeof func != 'function') {
+    return identity;
+  }
+  if (thisArg === undefined) {
+    return func;
+  }
+  switch (argCount) {
+    case 1: return function(value) {
+      return func.call(thisArg, value);
+    };
+    case 3: return function(value, index, collection) {
+      return func.call(thisArg, value, index, collection);
+    };
+    case 4: return function(accumulator, value, index, collection) {
+      return func.call(thisArg, accumulator, value, index, collection);
+    };
+    case 5: return function(value, other, key, object, source) {
+      return func.call(thisArg, value, other, key, object, source);
+    };
+  }
+  return function() {
+    return func.apply(thisArg, arguments);
+  };
+}
+
+/**
+ * This method returns the first argument provided to it.
+ *
+ * @static
+ * @memberOf _
+ * @category Utility
+ * @param {*} value Any value.
+ * @returns {*} Returns `value`.
+ * @example
+ *
+ * var object = { 'user': 'fred' };
+ *
+ * _.identity(object) === object;
+ * // => true
+ */
+function identity(value) {
+  return value;
+}
+
+module.exports = bindCallback;
+
+},{}],7:[function(require,module,exports){
+/**
+ * lodash 3.0.1 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+var keys = require('lodash.keys');
+
+/**
+ * Converts `value` to an object if it's not one.
+ *
+ * @private
+ * @param {*} value The value to process.
+ * @returns {Object} Returns the object.
+ */
+function toObject(value) {
+  return isObject(value) ? value : Object(value);
+}
+
+/**
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
+ * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(1);
+ * // => false
+ */
+function isObject(value) {
+  // Avoid a V8 JIT bug in Chrome 19-20.
+  // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+/**
+ * Creates a two dimensional array of the key-value pairs for `object`,
+ * e.g. `[[key1, value1], [key2, value2]]`.
+ *
+ * @static
+ * @memberOf _
+ * @category Object
+ * @param {Object} object The object to query.
+ * @returns {Array} Returns the new array of key-value pairs.
+ * @example
+ *
+ * _.pairs({ 'barney': 36, 'fred': 40 });
+ * // => [['barney', 36], ['fred', 40]] (iteration order is not guaranteed)
+ */
+function pairs(object) {
+  object = toObject(object);
+
+  var index = -1,
+      props = keys(object),
+      length = props.length,
+      result = Array(length);
+
+  while (++index < length) {
+    var key = props[index];
+    result[index] = [key, object[key]];
+  }
+  return result;
+}
+
+module.exports = pairs;
+
+},{"lodash.keys":12}],8:[function(require,module,exports){
+/**
+ * lodash 3.0.4 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+var keys = require('lodash.keys');
+
+/**
+ * Used as the [maximum length](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-number.max_safe_integer)
+ * of an array-like value.
+ */
+var MAX_SAFE_INTEGER = 9007199254740991;
+
+/**
+ * The base implementation of `_.forEach` without support for callback
+ * shorthands and `this` binding.
+ *
+ * @private
+ * @param {Array|Object|string} collection The collection to iterate over.
+ * @param {Function} iteratee The function invoked per iteration.
+ * @returns {Array|Object|string} Returns `collection`.
+ */
+var baseEach = createBaseEach(baseForOwn);
+
+/**
+ * The base implementation of `baseForIn` and `baseForOwn` which iterates
+ * over `object` properties returned by `keysFunc` invoking `iteratee` for
+ * each property. Iteratee functions may exit iteration early by explicitly
+ * returning `false`.
+ *
+ * @private
+ * @param {Object} object The object to iterate over.
+ * @param {Function} iteratee The function invoked per iteration.
+ * @param {Function} keysFunc The function to get the keys of `object`.
+ * @returns {Object} Returns `object`.
+ */
+var baseFor = createBaseFor();
+
+/**
+ * The base implementation of `_.forOwn` without support for callback
+ * shorthands and `this` binding.
+ *
+ * @private
+ * @param {Object} object The object to iterate over.
+ * @param {Function} iteratee The function invoked per iteration.
+ * @returns {Object} Returns `object`.
+ */
+function baseForOwn(object, iteratee) {
+  return baseFor(object, iteratee, keys);
+}
+
+/**
+ * The base implementation of `_.property` without support for deep paths.
+ *
+ * @private
+ * @param {string} key The key of the property to get.
+ * @returns {Function} Returns the new function.
+ */
+function baseProperty(key) {
+  return function(object) {
+    return object == null ? undefined : object[key];
+  };
+}
+
+/**
+ * Creates a `baseEach` or `baseEachRight` function.
+ *
+ * @private
+ * @param {Function} eachFunc The function to iterate over a collection.
+ * @param {boolean} [fromRight] Specify iterating from right to left.
+ * @returns {Function} Returns the new base function.
+ */
+function createBaseEach(eachFunc, fromRight) {
+  return function(collection, iteratee) {
+    var length = collection ? getLength(collection) : 0;
+    if (!isLength(length)) {
+      return eachFunc(collection, iteratee);
+    }
+    var index = fromRight ? length : -1,
+        iterable = toObject(collection);
+
+    while ((fromRight ? index-- : ++index < length)) {
+      if (iteratee(iterable[index], index, iterable) === false) {
+        break;
+      }
+    }
+    return collection;
+  };
+}
+
+/**
+ * Creates a base function for `_.forIn` or `_.forInRight`.
+ *
+ * @private
+ * @param {boolean} [fromRight] Specify iterating from right to left.
+ * @returns {Function} Returns the new base function.
+ */
+function createBaseFor(fromRight) {
+  return function(object, iteratee, keysFunc) {
+    var iterable = toObject(object),
+        props = keysFunc(object),
+        length = props.length,
+        index = fromRight ? length : -1;
+
+    while ((fromRight ? index-- : ++index < length)) {
+      var key = props[index];
+      if (iteratee(iterable[key], key, iterable) === false) {
+        break;
+      }
+    }
+    return object;
+  };
+}
+
+/**
+ * Gets the "length" property value of `object`.
+ *
+ * **Note:** This function is used to avoid a [JIT bug](https://bugs.webkit.org/show_bug.cgi?id=142792)
+ * that affects Safari on at least iOS 8.1-8.3 ARM64.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @returns {*} Returns the "length" value.
+ */
+var getLength = baseProperty('length');
+
+/**
+ * Checks if `value` is a valid array-like length.
+ *
+ * **Note:** This function is based on [`ToLength`](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength).
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a valid length, else `false`.
+ */
+function isLength(value) {
+  return typeof value == 'number' && value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
+}
+
+/**
+ * Converts `value` to an object if it's not one.
+ *
+ * @private
+ * @param {*} value The value to process.
+ * @returns {Object} Returns the object.
+ */
+function toObject(value) {
+  return isObject(value) ? value : Object(value);
+}
+
+/**
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
+ * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(1);
+ * // => false
+ */
+function isObject(value) {
+  // Avoid a V8 JIT bug in Chrome 19-20.
+  // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+module.exports = baseEach;
+
+},{"lodash.keys":12}],9:[function(require,module,exports){
+/**
+ * lodash 3.0.0 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.7.0 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+
+/**
+ * The base implementation of `_.find`, `_.findLast`, `_.findKey`, and `_.findLastKey`,
+ * without support for callback shorthands and `this` binding, which iterates
+ * over `collection` using the provided `eachFunc`.
+ *
+ * @private
+ * @param {Array|Object|string} collection The collection to search.
+ * @param {Function} predicate The function invoked per iteration.
+ * @param {Function} eachFunc The function to iterate over `collection`.
+ * @param {boolean} [retKey] Specify returning the key of the found element
+ *  instead of the element itself.
+ * @returns {*} Returns the found element or its key, else `undefined`.
+ */
+function baseFind(collection, predicate, eachFunc, retKey) {
+  var result;
+  eachFunc(collection, function(value, key, collection) {
+    if (predicate(value, key, collection)) {
+      result = retKey ? key : value;
+      return false;
+    }
+  });
+  return result;
+}
+
+module.exports = baseFind;
+
+},{}],10:[function(require,module,exports){
+/**
+ * lodash 3.6.0 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.2 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+
+/**
+ * The base implementation of `_.findIndex` and `_.findLastIndex` without
+ * support for callback shorthands and `this` binding.
+ *
+ * @private
+ * @param {Array} array The array to search.
+ * @param {Function} predicate The function invoked per iteration.
+ * @param {boolean} [fromRight] Specify iterating from right to left.
+ * @returns {number} Returns the index of the matched value, else `-1`.
+ */
+function baseFindIndex(array, predicate, fromRight) {
+  var length = array.length,
+      index = fromRight ? length : -1;
+
+  while ((fromRight ? index-- : ++index < length)) {
+    if (predicate(array[index], index, array)) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+module.exports = baseFindIndex;
+
+},{}],11:[function(require,module,exports){
+/**
+ * lodash 3.0.4 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+
+/** `Object#toString` result references. */
+var arrayTag = '[object Array]',
+    funcTag = '[object Function]';
+
+/** Used to detect host constructors (Safari > 5). */
+var reIsHostCtor = /^\[object .+?Constructor\]$/;
+
+/**
+ * Checks if `value` is object-like.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ */
+function isObjectLike(value) {
+  return !!value && typeof value == 'object';
+}
+
+/** Used for native method references. */
+var objectProto = Object.prototype;
+
+/** Used to resolve the decompiled source of functions. */
+var fnToString = Function.prototype.toString;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/**
+ * Used to resolve the [`toStringTag`](http://ecma-international.org/ecma-262/6.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var objToString = objectProto.toString;
+
+/** Used to detect if a method is native. */
+var reIsNative = RegExp('^' +
+  fnToString.call(hasOwnProperty).replace(/[\\^$.*+?()[\]{}|]/g, '\\$&')
+  .replace(/hasOwnProperty|(function).*?(?=\\\()| for .+?(?=\\\])/g, '$1.*?') + '$'
+);
+
+/* Native method references for those with the same name as other `lodash` methods. */
+var nativeIsArray = getNative(Array, 'isArray');
+
+/**
+ * Used as the [maximum length](http://ecma-international.org/ecma-262/6.0/#sec-number.max_safe_integer)
+ * of an array-like value.
+ */
+var MAX_SAFE_INTEGER = 9007199254740991;
+
+/**
+ * Gets the native function at `key` of `object`.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @param {string} key The key of the method to get.
+ * @returns {*} Returns the function if it's native, else `undefined`.
+ */
+function getNative(object, key) {
+  var value = object == null ? undefined : object[key];
+  return isNative(value) ? value : undefined;
+}
+
+/**
+ * Checks if `value` is a valid array-like length.
+ *
+ * **Note:** This function is based on [`ToLength`](http://ecma-international.org/ecma-262/6.0/#sec-tolength).
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a valid length, else `false`.
+ */
+function isLength(value) {
+  return typeof value == 'number' && value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
+}
+
+/**
+ * Checks if `value` is classified as an `Array` object.
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is correctly classified, else `false`.
+ * @example
+ *
+ * _.isArray([1, 2, 3]);
+ * // => true
+ *
+ * _.isArray(function() { return arguments; }());
+ * // => false
+ */
+var isArray = nativeIsArray || function(value) {
+  return isObjectLike(value) && isLength(value.length) && objToString.call(value) == arrayTag;
+};
+
+/**
+ * Checks if `value` is classified as a `Function` object.
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is correctly classified, else `false`.
+ * @example
+ *
+ * _.isFunction(_);
+ * // => true
+ *
+ * _.isFunction(/abc/);
+ * // => false
+ */
+function isFunction(value) {
+  // The use of `Object#toString` avoids issues with the `typeof` operator
+  // in older versions of Chrome and Safari which return 'function' for regexes
+  // and Safari 8 equivalents which return 'object' for typed array constructors.
+  return isObject(value) && objToString.call(value) == funcTag;
+}
+
+/**
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
+ * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(1);
+ * // => false
+ */
+function isObject(value) {
+  // Avoid a V8 JIT bug in Chrome 19-20.
+  // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+/**
+ * Checks if `value` is a native function.
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a native function, else `false`.
+ * @example
+ *
+ * _.isNative(Array.prototype.push);
+ * // => true
+ *
+ * _.isNative(_);
+ * // => false
+ */
+function isNative(value) {
+  if (value == null) {
+    return false;
+  }
+  if (isFunction(value)) {
+    return reIsNative.test(fnToString.call(value));
+  }
+  return isObjectLike(value) && reIsHostCtor.test(value);
+}
+
+module.exports = isArray;
+
+},{}],12:[function(require,module,exports){
+/**
+ * lodash 3.1.2 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+var getNative = require('lodash._getnative'),
+    isArguments = require('lodash.isarguments'),
+    isArray = require('lodash.isarray');
+
+/** Used to detect unsigned integer values. */
+var reIsUint = /^\d+$/;
+
+/** Used for native method references. */
+var objectProto = Object.prototype;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/* Native method references for those with the same name as other `lodash` methods. */
+var nativeKeys = getNative(Object, 'keys');
+
+/**
+ * Used as the [maximum length](http://ecma-international.org/ecma-262/6.0/#sec-number.max_safe_integer)
+ * of an array-like value.
+ */
+var MAX_SAFE_INTEGER = 9007199254740991;
+
+/**
+ * The base implementation of `_.property` without support for deep paths.
+ *
+ * @private
+ * @param {string} key The key of the property to get.
+ * @returns {Function} Returns the new function.
+ */
+function baseProperty(key) {
+  return function(object) {
+    return object == null ? undefined : object[key];
+  };
+}
+
+/**
+ * Gets the "length" property value of `object`.
+ *
+ * **Note:** This function is used to avoid a [JIT bug](https://bugs.webkit.org/show_bug.cgi?id=142792)
+ * that affects Safari on at least iOS 8.1-8.3 ARM64.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @returns {*} Returns the "length" value.
+ */
+var getLength = baseProperty('length');
+
+/**
+ * Checks if `value` is array-like.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is array-like, else `false`.
+ */
+function isArrayLike(value) {
+  return value != null && isLength(getLength(value));
+}
+
+/**
+ * Checks if `value` is a valid array-like index.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @param {number} [length=MAX_SAFE_INTEGER] The upper bounds of a valid index.
+ * @returns {boolean} Returns `true` if `value` is a valid index, else `false`.
+ */
+function isIndex(value, length) {
+  value = (typeof value == 'number' || reIsUint.test(value)) ? +value : -1;
+  length = length == null ? MAX_SAFE_INTEGER : length;
+  return value > -1 && value % 1 == 0 && value < length;
+}
+
+/**
+ * Checks if `value` is a valid array-like length.
+ *
+ * **Note:** This function is based on [`ToLength`](http://ecma-international.org/ecma-262/6.0/#sec-tolength).
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a valid length, else `false`.
+ */
+function isLength(value) {
+  return typeof value == 'number' && value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
+}
+
+/**
+ * A fallback implementation of `Object.keys` which creates an array of the
+ * own enumerable property names of `object`.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @returns {Array} Returns the array of property names.
+ */
+function shimKeys(object) {
+  var props = keysIn(object),
+      propsLength = props.length,
+      length = propsLength && object.length;
+
+  var allowIndexes = !!length && isLength(length) &&
+    (isArray(object) || isArguments(object));
+
+  var index = -1,
+      result = [];
+
+  while (++index < propsLength) {
+    var key = props[index];
+    if ((allowIndexes && isIndex(key, length)) || hasOwnProperty.call(object, key)) {
+      result.push(key);
+    }
+  }
+  return result;
+}
+
+/**
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
+ * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(1);
+ * // => false
+ */
+function isObject(value) {
+  // Avoid a V8 JIT bug in Chrome 19-20.
+  // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+/**
+ * Creates an array of the own enumerable property names of `object`.
+ *
+ * **Note:** Non-object values are coerced to objects. See the
+ * [ES spec](http://ecma-international.org/ecma-262/6.0/#sec-object.keys)
+ * for more details.
+ *
+ * @static
+ * @memberOf _
+ * @category Object
+ * @param {Object} object The object to query.
+ * @returns {Array} Returns the array of property names.
+ * @example
+ *
+ * function Foo() {
+ *   this.a = 1;
+ *   this.b = 2;
+ * }
+ *
+ * Foo.prototype.c = 3;
+ *
+ * _.keys(new Foo);
+ * // => ['a', 'b'] (iteration order is not guaranteed)
+ *
+ * _.keys('hi');
+ * // => ['0', '1']
+ */
+var keys = !nativeKeys ? shimKeys : function(object) {
+  var Ctor = object == null ? undefined : object.constructor;
+  if ((typeof Ctor == 'function' && Ctor.prototype === object) ||
+      (typeof object != 'function' && isArrayLike(object))) {
+    return shimKeys(object);
+  }
+  return isObject(object) ? nativeKeys(object) : [];
+};
+
+/**
+ * Creates an array of the own and inherited enumerable property names of `object`.
+ *
+ * **Note:** Non-object values are coerced to objects.
+ *
+ * @static
+ * @memberOf _
+ * @category Object
+ * @param {Object} object The object to query.
+ * @returns {Array} Returns the array of property names.
+ * @example
+ *
+ * function Foo() {
+ *   this.a = 1;
+ *   this.b = 2;
+ * }
+ *
+ * Foo.prototype.c = 3;
+ *
+ * _.keysIn(new Foo);
+ * // => ['a', 'b', 'c'] (iteration order is not guaranteed)
+ */
+function keysIn(object) {
+  if (object == null) {
+    return [];
+  }
+  if (!isObject(object)) {
+    object = Object(object);
+  }
+  var length = object.length;
+  length = (length && isLength(length) &&
+    (isArray(object) || isArguments(object)) && length) || 0;
+
+  var Ctor = object.constructor,
+      index = -1,
+      isProto = typeof Ctor == 'function' && Ctor.prototype === object,
+      result = Array(length),
+      skipIndexes = length > 0;
+
+  while (++index < length) {
+    result[index] = (index + '');
+  }
+  for (var key in object) {
+    if (!(skipIndexes && isIndex(key, length)) &&
+        !(key == 'constructor' && (isProto || !hasOwnProperty.call(object, key)))) {
+      result.push(key);
+    }
+  }
+  return result;
+}
+
+module.exports = keys;
+
+},{"lodash._getnative":13,"lodash.isarguments":14,"lodash.isarray":11}],13:[function(require,module,exports){
+/**
+ * lodash 3.9.1 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+
+/** `Object#toString` result references. */
+var funcTag = '[object Function]';
+
+/** Used to detect host constructors (Safari > 5). */
+var reIsHostCtor = /^\[object .+?Constructor\]$/;
+
+/**
+ * Checks if `value` is object-like.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ */
+function isObjectLike(value) {
+  return !!value && typeof value == 'object';
+}
+
+/** Used for native method references. */
+var objectProto = Object.prototype;
+
+/** Used to resolve the decompiled source of functions. */
+var fnToString = Function.prototype.toString;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/**
+ * Used to resolve the [`toStringTag`](http://ecma-international.org/ecma-262/6.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var objToString = objectProto.toString;
+
+/** Used to detect if a method is native. */
+var reIsNative = RegExp('^' +
+  fnToString.call(hasOwnProperty).replace(/[\\^$.*+?()[\]{}|]/g, '\\$&')
+  .replace(/hasOwnProperty|(function).*?(?=\\\()| for .+?(?=\\\])/g, '$1.*?') + '$'
+);
+
+/**
+ * Gets the native function at `key` of `object`.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @param {string} key The key of the method to get.
+ * @returns {*} Returns the function if it's native, else `undefined`.
+ */
+function getNative(object, key) {
+  var value = object == null ? undefined : object[key];
+  return isNative(value) ? value : undefined;
+}
+
+/**
+ * Checks if `value` is classified as a `Function` object.
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is correctly classified, else `false`.
+ * @example
+ *
+ * _.isFunction(_);
+ * // => true
+ *
+ * _.isFunction(/abc/);
+ * // => false
+ */
+function isFunction(value) {
+  // The use of `Object#toString` avoids issues with the `typeof` operator
+  // in older versions of Chrome and Safari which return 'function' for regexes
+  // and Safari 8 equivalents which return 'object' for typed array constructors.
+  return isObject(value) && objToString.call(value) == funcTag;
+}
+
+/**
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
+ * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(1);
+ * // => false
+ */
+function isObject(value) {
+  // Avoid a V8 JIT bug in Chrome 19-20.
+  // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+/**
+ * Checks if `value` is a native function.
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a native function, else `false`.
+ * @example
+ *
+ * _.isNative(Array.prototype.push);
+ * // => true
+ *
+ * _.isNative(_);
+ * // => false
+ */
+function isNative(value) {
+  if (value == null) {
+    return false;
+  }
+  if (isFunction(value)) {
+    return reIsNative.test(fnToString.call(value));
+  }
+  return isObjectLike(value) && reIsHostCtor.test(value);
+}
+
+module.exports = getNative;
+
+},{}],14:[function(require,module,exports){
+/**
+ * lodash 3.0.4 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+
+/**
+ * Checks if `value` is object-like.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ */
+function isObjectLike(value) {
+  return !!value && typeof value == 'object';
+}
+
+/** Used for native method references. */
+var objectProto = Object.prototype;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/** Native method references. */
+var propertyIsEnumerable = objectProto.propertyIsEnumerable;
+
+/**
+ * Used as the [maximum length](http://ecma-international.org/ecma-262/6.0/#sec-number.max_safe_integer)
+ * of an array-like value.
+ */
+var MAX_SAFE_INTEGER = 9007199254740991;
+
+/**
+ * The base implementation of `_.property` without support for deep paths.
+ *
+ * @private
+ * @param {string} key The key of the property to get.
+ * @returns {Function} Returns the new function.
+ */
+function baseProperty(key) {
+  return function(object) {
+    return object == null ? undefined : object[key];
+  };
+}
+
+/**
+ * Gets the "length" property value of `object`.
+ *
+ * **Note:** This function is used to avoid a [JIT bug](https://bugs.webkit.org/show_bug.cgi?id=142792)
+ * that affects Safari on at least iOS 8.1-8.3 ARM64.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @returns {*} Returns the "length" value.
+ */
+var getLength = baseProperty('length');
+
+/**
+ * Checks if `value` is array-like.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is array-like, else `false`.
+ */
+function isArrayLike(value) {
+  return value != null && isLength(getLength(value));
+}
+
+/**
+ * Checks if `value` is a valid array-like length.
+ *
+ * **Note:** This function is based on [`ToLength`](http://ecma-international.org/ecma-262/6.0/#sec-tolength).
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a valid length, else `false`.
+ */
+function isLength(value) {
+  return typeof value == 'number' && value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
+}
+
+/**
+ * Checks if `value` is classified as an `arguments` object.
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is correctly classified, else `false`.
+ * @example
+ *
+ * _.isArguments(function() { return arguments; }());
+ * // => true
+ *
+ * _.isArguments([1, 2, 3]);
+ * // => false
+ */
+function isArguments(value) {
+  return isObjectLike(value) && isArrayLike(value) &&
+    hasOwnProperty.call(value, 'callee') && !propertyIsEnumerable.call(value, 'callee');
+}
+
+module.exports = isArguments;
+
+},{}],15:[function(require,module,exports){
+/**
+ * lodash 3.1.0 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.2 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+var baseFlatten = require('lodash._baseflatten'),
+    bindCallback = require('lodash._bindcallback'),
+    pickByArray = require('lodash._pickbyarray'),
+    pickByCallback = require('lodash._pickbycallback'),
+    restParam = require('lodash.restparam');
+
+/**
+ * Creates an object composed of the picked `object` properties. Property
+ * names may be specified as individual arguments or as arrays of property
+ * names. If `predicate` is provided it is invoked for each property of `object`
+ * picking the properties `predicate` returns truthy for. The predicate is
+ * bound to `thisArg` and invoked with three arguments: (value, key, object).
+ *
+ * @static
+ * @memberOf _
+ * @category Object
+ * @param {Object} object The source object.
+ * @param {Function|...(string|string[])} [predicate] The function invoked per
+ *  iteration or property names to pick, specified as individual property
+ *  names or arrays of property names.
+ * @param {*} [thisArg] The `this` binding of `predicate`.
+ * @returns {Object} Returns the new object.
+ * @example
+ *
+ * var object = { 'user': 'fred', 'age': 40 };
+ *
+ * _.pick(object, 'user');
+ * // => { 'user': 'fred' }
+ *
+ * _.pick(object, _.isString);
+ * // => { 'user': 'fred' }
+ */
+var pick = restParam(function(object, props) {
+  if (object == null) {
+    return {};
+  }
+  return typeof props[0] == 'function'
+    ? pickByCallback(object, bindCallback(props[0], props[1], 3))
+    : pickByArray(object, baseFlatten(props));
+});
+
+module.exports = pick;
+
+},{"lodash._baseflatten":16,"lodash._bindcallback":19,"lodash._pickbyarray":20,"lodash._pickbycallback":21,"lodash.restparam":26}],16:[function(require,module,exports){
+/**
+ * lodash 3.1.4 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+var isArguments = require('lodash.isarguments'),
+    isArray = require('lodash.isarray');
+
+/**
+ * Checks if `value` is object-like.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ */
+function isObjectLike(value) {
+  return !!value && typeof value == 'object';
+}
+
+/**
+ * Used as the [maximum length](http://ecma-international.org/ecma-262/6.0/#sec-number.max_safe_integer)
+ * of an array-like value.
+ */
+var MAX_SAFE_INTEGER = 9007199254740991;
+
+/**
+ * Appends the elements of `values` to `array`.
+ *
+ * @private
+ * @param {Array} array The array to modify.
+ * @param {Array} values The values to append.
+ * @returns {Array} Returns `array`.
+ */
+function arrayPush(array, values) {
+  var index = -1,
+      length = values.length,
+      offset = array.length;
+
+  while (++index < length) {
+    array[offset + index] = values[index];
+  }
+  return array;
+}
+
+/**
+ * The base implementation of `_.flatten` with added support for restricting
+ * flattening and specifying the start index.
+ *
+ * @private
+ * @param {Array} array The array to flatten.
+ * @param {boolean} [isDeep] Specify a deep flatten.
+ * @param {boolean} [isStrict] Restrict flattening to arrays-like objects.
+ * @param {Array} [result=[]] The initial result value.
+ * @returns {Array} Returns the new flattened array.
+ */
+function baseFlatten(array, isDeep, isStrict, result) {
+  result || (result = []);
+
+  var index = -1,
+      length = array.length;
+
+  while (++index < length) {
+    var value = array[index];
+    if (isObjectLike(value) && isArrayLike(value) &&
+        (isStrict || isArray(value) || isArguments(value))) {
+      if (isDeep) {
+        // Recursively flatten arrays (susceptible to call stack limits).
+        baseFlatten(value, isDeep, isStrict, result);
+      } else {
+        arrayPush(result, value);
+      }
+    } else if (!isStrict) {
+      result[result.length] = value;
+    }
+  }
+  return result;
+}
+
+/**
+ * The base implementation of `_.property` without support for deep paths.
+ *
+ * @private
+ * @param {string} key The key of the property to get.
+ * @returns {Function} Returns the new function.
+ */
+function baseProperty(key) {
+  return function(object) {
+    return object == null ? undefined : object[key];
+  };
+}
+
+/**
+ * Gets the "length" property value of `object`.
+ *
+ * **Note:** This function is used to avoid a [JIT bug](https://bugs.webkit.org/show_bug.cgi?id=142792)
+ * that affects Safari on at least iOS 8.1-8.3 ARM64.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @returns {*} Returns the "length" value.
+ */
+var getLength = baseProperty('length');
+
+/**
+ * Checks if `value` is array-like.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is array-like, else `false`.
+ */
+function isArrayLike(value) {
+  return value != null && isLength(getLength(value));
+}
+
+/**
+ * Checks if `value` is a valid array-like length.
+ *
+ * **Note:** This function is based on [`ToLength`](http://ecma-international.org/ecma-262/6.0/#sec-tolength).
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a valid length, else `false`.
+ */
+function isLength(value) {
+  return typeof value == 'number' && value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
+}
+
+module.exports = baseFlatten;
+
+},{"lodash.isarguments":17,"lodash.isarray":18}],17:[function(require,module,exports){
+arguments[4][14][0].apply(exports,arguments)
+},{"dup":14}],18:[function(require,module,exports){
+arguments[4][11][0].apply(exports,arguments)
+},{"dup":11}],19:[function(require,module,exports){
+arguments[4][6][0].apply(exports,arguments)
+},{"dup":6}],20:[function(require,module,exports){
+/**
+ * lodash 3.0.2 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+
+/**
+ * A specialized version of `_.pick` which picks `object` properties specified
+ * by `props`.
+ *
+ * @private
+ * @param {Object} object The source object.
+ * @param {string[]} props The property names to pick.
+ * @returns {Object} Returns the new object.
+ */
+function pickByArray(object, props) {
+  object = toObject(object);
+
+  var index = -1,
+      length = props.length,
+      result = {};
+
+  while (++index < length) {
+    var key = props[index];
+    if (key in object) {
+      result[key] = object[key];
+    }
+  }
+  return result;
+}
+
+/**
+ * Converts `value` to an object if it's not one.
+ *
+ * @private
+ * @param {*} value The value to process.
+ * @returns {Object} Returns the object.
+ */
+function toObject(value) {
+  return isObject(value) ? value : Object(value);
+}
+
+/**
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
+ * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(1);
+ * // => false
+ */
+function isObject(value) {
+  // Avoid a V8 JIT bug in Chrome 19-20.
+  // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+module.exports = pickByArray;
+
+},{}],21:[function(require,module,exports){
+/**
+ * lodash 3.0.0 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.7.0 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+var baseFor = require('lodash._basefor'),
+    keysIn = require('lodash.keysin');
+
+/**
+ * The base implementation of `_.forIn` without support for callback
+ * shorthands and `this` binding.
+ *
+ * @private
+ * @param {Object} object The object to iterate over.
+ * @param {Function} iteratee The function invoked per iteration.
+ * @returns {Object} Returns `object`.
+ */
+function baseForIn(object, iteratee) {
+  return baseFor(object, iteratee, keysIn);
+}
+
+/**
+ * A specialized version of `_.pick` that picks `object` properties `predicate`
+ * returns truthy for.
+ *
+ * @private
+ * @param {Object} object The source object.
+ * @param {Function} predicate The function invoked per iteration.
+ * @returns {Object} Returns the new object.
+ */
+function pickByCallback(object, predicate) {
+  var result = {};
+  baseForIn(object, function(value, key, object) {
+    if (predicate(value, key, object)) {
+      result[key] = value;
+    }
+  });
+  return result;
+}
+
+module.exports = pickByCallback;
+
+},{"lodash._basefor":22,"lodash.keysin":23}],22:[function(require,module,exports){
+/**
+ * lodash 3.0.2 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+
+/**
+ * The base implementation of `baseForIn` and `baseForOwn` which iterates
+ * over `object` properties returned by `keysFunc` invoking `iteratee` for
+ * each property. Iteratee functions may exit iteration early by explicitly
+ * returning `false`.
+ *
+ * @private
+ * @param {Object} object The object to iterate over.
+ * @param {Function} iteratee The function invoked per iteration.
+ * @param {Function} keysFunc The function to get the keys of `object`.
+ * @returns {Object} Returns `object`.
+ */
+var baseFor = createBaseFor();
+
+/**
+ * Creates a base function for `_.forIn` or `_.forInRight`.
+ *
+ * @private
+ * @param {boolean} [fromRight] Specify iterating from right to left.
+ * @returns {Function} Returns the new base function.
+ */
+function createBaseFor(fromRight) {
+  return function(object, iteratee, keysFunc) {
+    var iterable = toObject(object),
+        props = keysFunc(object),
+        length = props.length,
+        index = fromRight ? length : -1;
+
+    while ((fromRight ? index-- : ++index < length)) {
+      var key = props[index];
+      if (iteratee(iterable[key], key, iterable) === false) {
+        break;
+      }
+    }
+    return object;
+  };
+}
+
+/**
+ * Converts `value` to an object if it's not one.
+ *
+ * @private
+ * @param {*} value The value to process.
+ * @returns {Object} Returns the object.
+ */
+function toObject(value) {
+  return isObject(value) ? value : Object(value);
+}
+
+/**
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
+ * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(1);
+ * // => false
+ */
+function isObject(value) {
+  // Avoid a V8 JIT bug in Chrome 19-20.
+  // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+module.exports = baseFor;
+
+},{}],23:[function(require,module,exports){
+/**
+ * lodash 3.0.8 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+var isArguments = require('lodash.isarguments'),
+    isArray = require('lodash.isarray');
+
+/** Used to detect unsigned integer values. */
+var reIsUint = /^\d+$/;
+
+/** Used for native method references. */
+var objectProto = Object.prototype;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/**
+ * Used as the [maximum length](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-number.max_safe_integer)
+ * of an array-like value.
+ */
+var MAX_SAFE_INTEGER = 9007199254740991;
+
+/**
+ * Checks if `value` is a valid array-like index.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @param {number} [length=MAX_SAFE_INTEGER] The upper bounds of a valid index.
+ * @returns {boolean} Returns `true` if `value` is a valid index, else `false`.
+ */
+function isIndex(value, length) {
+  value = (typeof value == 'number' || reIsUint.test(value)) ? +value : -1;
+  length = length == null ? MAX_SAFE_INTEGER : length;
+  return value > -1 && value % 1 == 0 && value < length;
+}
+
+/**
+ * Checks if `value` is a valid array-like length.
+ *
+ * **Note:** This function is based on [`ToLength`](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength).
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a valid length, else `false`.
+ */
+function isLength(value) {
+  return typeof value == 'number' && value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
+}
+
+/**
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
+ * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(1);
+ * // => false
+ */
+function isObject(value) {
+  // Avoid a V8 JIT bug in Chrome 19-20.
+  // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+/**
+ * Creates an array of the own and inherited enumerable property names of `object`.
+ *
+ * **Note:** Non-object values are coerced to objects.
+ *
+ * @static
+ * @memberOf _
+ * @category Object
+ * @param {Object} object The object to query.
+ * @returns {Array} Returns the array of property names.
+ * @example
+ *
+ * function Foo() {
+ *   this.a = 1;
+ *   this.b = 2;
+ * }
+ *
+ * Foo.prototype.c = 3;
+ *
+ * _.keysIn(new Foo);
+ * // => ['a', 'b', 'c'] (iteration order is not guaranteed)
+ */
+function keysIn(object) {
+  if (object == null) {
+    return [];
+  }
+  if (!isObject(object)) {
+    object = Object(object);
+  }
+  var length = object.length;
+  length = (length && isLength(length) &&
+    (isArray(object) || isArguments(object)) && length) || 0;
+
+  var Ctor = object.constructor,
+      index = -1,
+      isProto = typeof Ctor == 'function' && Ctor.prototype === object,
+      result = Array(length),
+      skipIndexes = length > 0;
+
+  while (++index < length) {
+    result[index] = (index + '');
+  }
+  for (var key in object) {
+    if (!(skipIndexes && isIndex(key, length)) &&
+        !(key == 'constructor' && (isProto || !hasOwnProperty.call(object, key)))) {
+      result.push(key);
+    }
+  }
+  return result;
+}
+
+module.exports = keysIn;
+
+},{"lodash.isarguments":24,"lodash.isarray":25}],24:[function(require,module,exports){
+arguments[4][14][0].apply(exports,arguments)
+},{"dup":14}],25:[function(require,module,exports){
+arguments[4][11][0].apply(exports,arguments)
+},{"dup":11}],26:[function(require,module,exports){
+/**
+ * lodash 3.6.1 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+
+/** Used as the `TypeError` message for "Functions" methods. */
+var FUNC_ERROR_TEXT = 'Expected a function';
+
+/* Native method references for those with the same name as other `lodash` methods. */
+var nativeMax = Math.max;
+
+/**
+ * Creates a function that invokes `func` with the `this` binding of the
+ * created function and arguments from `start` and beyond provided as an array.
+ *
+ * **Note:** This method is based on the [rest parameter](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/rest_parameters).
+ *
+ * @static
+ * @memberOf _
+ * @category Function
+ * @param {Function} func The function to apply a rest parameter to.
+ * @param {number} [start=func.length-1] The start position of the rest parameter.
+ * @returns {Function} Returns the new function.
+ * @example
+ *
+ * var say = _.restParam(function(what, names) {
+ *   return what + ' ' + _.initial(names).join(', ') +
+ *     (_.size(names) > 1 ? ', & ' : '') + _.last(names);
+ * });
+ *
+ * say('hello', 'fred', 'barney', 'pebbles');
+ * // => 'hello fred, barney, & pebbles'
+ */
+function restParam(func, start) {
+  if (typeof func != 'function') {
+    throw new TypeError(FUNC_ERROR_TEXT);
+  }
+  start = nativeMax(start === undefined ? (func.length - 1) : (+start || 0), 0);
+  return function() {
+    var args = arguments,
+        index = -1,
+        length = nativeMax(args.length - start, 0),
+        rest = Array(length);
+
+    while (++index < length) {
+      rest[index] = args[start + index];
+    }
+    switch (start) {
+      case 0: return func.call(this, rest);
+      case 1: return func.call(this, args[0], rest);
+      case 2: return func.call(this, args[0], args[1], rest);
+    }
+    var otherArgs = Array(start + 1);
+    index = -1;
+    while (++index < start) {
+      otherArgs[index] = args[index];
+    }
+    otherArgs[start] = rest;
+    return func.apply(this, otherArgs);
+  };
+}
+
+module.exports = restParam;
+
+},{}],27:[function(require,module,exports){
+/**
+ * lodash 3.0.4 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+var debounce = require('lodash.debounce');
+
+/** Used as the `TypeError` message for "Functions" methods. */
+var FUNC_ERROR_TEXT = 'Expected a function';
+
+/**
+ * Creates a throttled function that only invokes `func` at most once per
+ * every `wait` milliseconds. The throttled function comes with a `cancel`
+ * method to cancel delayed invocations. Provide an options object to indicate
+ * that `func` should be invoked on the leading and/or trailing edge of the
+ * `wait` timeout. Subsequent calls to the throttled function return the
+ * result of the last `func` call.
+ *
+ * **Note:** If `leading` and `trailing` options are `true`, `func` is invoked
+ * on the trailing edge of the timeout only if the the throttled function is
+ * invoked more than once during the `wait` timeout.
+ *
+ * See [David Corbacho's article](http://drupalmotion.com/article/debounce-and-throttle-visual-explanation)
+ * for details over the differences between `_.throttle` and `_.debounce`.
+ *
+ * @static
+ * @memberOf _
+ * @category Function
+ * @param {Function} func The function to throttle.
+ * @param {number} [wait=0] The number of milliseconds to throttle invocations to.
+ * @param {Object} [options] The options object.
+ * @param {boolean} [options.leading=true] Specify invoking on the leading
+ *  edge of the timeout.
+ * @param {boolean} [options.trailing=true] Specify invoking on the trailing
+ *  edge of the timeout.
+ * @returns {Function} Returns the new throttled function.
+ * @example
+ *
+ * // avoid excessively updating the position while scrolling
+ * jQuery(window).on('scroll', _.throttle(updatePosition, 100));
+ *
+ * // invoke `renewToken` when the click event is fired, but not more than once every 5 minutes
+ * jQuery('.interactive').on('click', _.throttle(renewToken, 300000, {
+ *   'trailing': false
+ * }));
+ *
+ * // cancel a trailing throttled call
+ * jQuery(window).on('popstate', throttled.cancel);
+ */
+function throttle(func, wait, options) {
+  var leading = true,
+      trailing = true;
+
+  if (typeof func != 'function') {
+    throw new TypeError(FUNC_ERROR_TEXT);
+  }
+  if (options === false) {
+    leading = false;
+  } else if (isObject(options)) {
+    leading = 'leading' in options ? !!options.leading : leading;
+    trailing = 'trailing' in options ? !!options.trailing : trailing;
+  }
+  return debounce(func, wait, { 'leading': leading, 'maxWait': +wait, 'trailing': trailing });
+}
+
+/**
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
+ * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(1);
+ * // => false
+ */
+function isObject(value) {
+  // Avoid a V8 JIT bug in Chrome 19-20.
+  // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+module.exports = throttle;
+
+},{"lodash.debounce":28}],28:[function(require,module,exports){
+/**
+ * lodash 3.1.1 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+var getNative = require('lodash._getnative');
+
+/** Used as the `TypeError` message for "Functions" methods. */
+var FUNC_ERROR_TEXT = 'Expected a function';
+
+/* Native method references for those with the same name as other `lodash` methods. */
+var nativeMax = Math.max,
+    nativeNow = getNative(Date, 'now');
+
+/**
+ * Gets the number of milliseconds that have elapsed since the Unix epoch
+ * (1 January 1970 00:00:00 UTC).
+ *
+ * @static
+ * @memberOf _
+ * @category Date
+ * @example
+ *
+ * _.defer(function(stamp) {
+ *   console.log(_.now() - stamp);
+ * }, _.now());
+ * // => logs the number of milliseconds it took for the deferred function to be invoked
+ */
+var now = nativeNow || function() {
+  return new Date().getTime();
+};
+
+/**
+ * Creates a debounced function that delays invoking `func` until after `wait`
+ * milliseconds have elapsed since the last time the debounced function was
+ * invoked. The debounced function comes with a `cancel` method to cancel
+ * delayed invocations. Provide an options object to indicate that `func`
+ * should be invoked on the leading and/or trailing edge of the `wait` timeout.
+ * Subsequent calls to the debounced function return the result of the last
+ * `func` invocation.
+ *
+ * **Note:** If `leading` and `trailing` options are `true`, `func` is invoked
+ * on the trailing edge of the timeout only if the the debounced function is
+ * invoked more than once during the `wait` timeout.
+ *
+ * See [David Corbacho's article](http://drupalmotion.com/article/debounce-and-throttle-visual-explanation)
+ * for details over the differences between `_.debounce` and `_.throttle`.
+ *
+ * @static
+ * @memberOf _
+ * @category Function
+ * @param {Function} func The function to debounce.
+ * @param {number} [wait=0] The number of milliseconds to delay.
+ * @param {Object} [options] The options object.
+ * @param {boolean} [options.leading=false] Specify invoking on the leading
+ *  edge of the timeout.
+ * @param {number} [options.maxWait] The maximum time `func` is allowed to be
+ *  delayed before it is invoked.
+ * @param {boolean} [options.trailing=true] Specify invoking on the trailing
+ *  edge of the timeout.
+ * @returns {Function} Returns the new debounced function.
+ * @example
+ *
+ * // avoid costly calculations while the window size is in flux
+ * jQuery(window).on('resize', _.debounce(calculateLayout, 150));
+ *
+ * // invoke `sendMail` when the click event is fired, debouncing subsequent calls
+ * jQuery('#postbox').on('click', _.debounce(sendMail, 300, {
+ *   'leading': true,
+ *   'trailing': false
+ * }));
+ *
+ * // ensure `batchLog` is invoked once after 1 second of debounced calls
+ * var source = new EventSource('/stream');
+ * jQuery(source).on('message', _.debounce(batchLog, 250, {
+ *   'maxWait': 1000
+ * }));
+ *
+ * // cancel a debounced call
+ * var todoChanges = _.debounce(batchLog, 1000);
+ * Object.observe(models.todo, todoChanges);
+ *
+ * Object.observe(models, function(changes) {
+ *   if (_.find(changes, { 'user': 'todo', 'type': 'delete'})) {
+ *     todoChanges.cancel();
+ *   }
+ * }, ['delete']);
+ *
+ * // ...at some point `models.todo` is changed
+ * models.todo.completed = true;
+ *
+ * // ...before 1 second has passed `models.todo` is deleted
+ * // which cancels the debounced `todoChanges` call
+ * delete models.todo;
+ */
+function debounce(func, wait, options) {
+  var args,
+      maxTimeoutId,
+      result,
+      stamp,
+      thisArg,
+      timeoutId,
+      trailingCall,
+      lastCalled = 0,
+      maxWait = false,
+      trailing = true;
+
+  if (typeof func != 'function') {
+    throw new TypeError(FUNC_ERROR_TEXT);
+  }
+  wait = wait < 0 ? 0 : (+wait || 0);
+  if (options === true) {
+    var leading = true;
+    trailing = false;
+  } else if (isObject(options)) {
+    leading = !!options.leading;
+    maxWait = 'maxWait' in options && nativeMax(+options.maxWait || 0, wait);
+    trailing = 'trailing' in options ? !!options.trailing : trailing;
+  }
+
+  function cancel() {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    if (maxTimeoutId) {
+      clearTimeout(maxTimeoutId);
+    }
+    lastCalled = 0;
+    maxTimeoutId = timeoutId = trailingCall = undefined;
+  }
+
+  function complete(isCalled, id) {
+    if (id) {
+      clearTimeout(id);
+    }
+    maxTimeoutId = timeoutId = trailingCall = undefined;
+    if (isCalled) {
+      lastCalled = now();
+      result = func.apply(thisArg, args);
+      if (!timeoutId && !maxTimeoutId) {
+        args = thisArg = undefined;
+      }
+    }
+  }
+
+  function delayed() {
+    var remaining = wait - (now() - stamp);
+    if (remaining <= 0 || remaining > wait) {
+      complete(trailingCall, maxTimeoutId);
+    } else {
+      timeoutId = setTimeout(delayed, remaining);
+    }
+  }
+
+  function maxDelayed() {
+    complete(trailing, timeoutId);
+  }
+
+  function debounced() {
+    args = arguments;
+    stamp = now();
+    thisArg = this;
+    trailingCall = trailing && (timeoutId || !leading);
+
+    if (maxWait === false) {
+      var leadingCall = leading && !timeoutId;
+    } else {
+      if (!maxTimeoutId && !leading) {
+        lastCalled = stamp;
+      }
+      var remaining = maxWait - (stamp - lastCalled),
+          isCalled = remaining <= 0 || remaining > maxWait;
+
+      if (isCalled) {
+        if (maxTimeoutId) {
+          maxTimeoutId = clearTimeout(maxTimeoutId);
+        }
+        lastCalled = stamp;
+        result = func.apply(thisArg, args);
+      }
+      else if (!maxTimeoutId) {
+        maxTimeoutId = setTimeout(maxDelayed, remaining);
+      }
+    }
+    if (isCalled && timeoutId) {
+      timeoutId = clearTimeout(timeoutId);
+    }
+    else if (!timeoutId && wait !== maxWait) {
+      timeoutId = setTimeout(delayed, wait);
+    }
+    if (leadingCall) {
+      isCalled = true;
+      result = func.apply(thisArg, args);
+    }
+    if (isCalled && !timeoutId && !maxTimeoutId) {
+      args = thisArg = undefined;
+    }
+    return result;
+  }
+  debounced.cancel = cancel;
+  return debounced;
+}
+
+/**
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
+ * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(1);
+ * // => false
+ */
+function isObject(value) {
+  // Avoid a V8 JIT bug in Chrome 19-20.
+  // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+module.exports = debounce;
+
+},{"lodash._getnative":29}],29:[function(require,module,exports){
+arguments[4][13][0].apply(exports,arguments)
+},{"dup":13}],30:[function(require,module,exports){
+/**
+ * lodash 3.2.2 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+var baseCallback = require('lodash._basecallback'),
+    baseUniq = require('lodash._baseuniq'),
+    isIterateeCall = require('lodash._isiterateecall');
+
+/**
+ * An implementation of `_.uniq` optimized for sorted arrays without support
+ * for callback shorthands and `this` binding.
+ *
+ * @private
+ * @param {Array} array The array to inspect.
+ * @param {Function} [iteratee] The function invoked per iteration.
+ * @returns {Array} Returns the new duplicate-value-free array.
+ */
+function sortedUniq(array, iteratee) {
+  var seen,
+      index = -1,
+      length = array.length,
+      resIndex = -1,
+      result = [];
+
+  while (++index < length) {
+    var value = array[index],
+        computed = iteratee ? iteratee(value, index, array) : value;
+
+    if (!index || seen !== computed) {
+      seen = computed;
+      result[++resIndex] = value;
+    }
+  }
+  return result;
+}
+
+/**
+ * Creates a duplicate-free version of an array, using
+ * [`SameValueZero`](http://ecma-international.org/ecma-262/6.0/#sec-samevaluezero)
+ * for equality comparisons, in which only the first occurence of each element
+ * is kept. Providing `true` for `isSorted` performs a faster search algorithm
+ * for sorted arrays. If an iteratee function is provided it is invoked for
+ * each element in the array to generate the criterion by which uniqueness
+ * is computed. The `iteratee` is bound to `thisArg` and invoked with three
+ * arguments: (value, index, array).
+ *
+ * If a property name is provided for `iteratee` the created `_.property`
+ * style callback returns the property value of the given element.
+ *
+ * If a value is also provided for `thisArg` the created `_.matchesProperty`
+ * style callback returns `true` for elements that have a matching property
+ * value, else `false`.
+ *
+ * If an object is provided for `iteratee` the created `_.matches` style
+ * callback returns `true` for elements that have the properties of the given
+ * object, else `false`.
+ *
+ * @static
+ * @memberOf _
+ * @alias unique
+ * @category Array
+ * @param {Array} array The array to inspect.
+ * @param {boolean} [isSorted] Specify the array is sorted.
+ * @param {Function|Object|string} [iteratee] The function invoked per iteration.
+ * @param {*} [thisArg] The `this` binding of `iteratee`.
+ * @returns {Array} Returns the new duplicate-value-free array.
+ * @example
+ *
+ * _.uniq([2, 1, 2]);
+ * // => [2, 1]
+ *
+ * // using `isSorted`
+ * _.uniq([1, 1, 2], true);
+ * // => [1, 2]
+ *
+ * // using an iteratee function
+ * _.uniq([1, 2.5, 1.5, 2], function(n) {
+ *   return this.floor(n);
+ * }, Math);
+ * // => [1, 2.5]
+ *
+ * // using the `_.property` callback shorthand
+ * _.uniq([{ 'x': 1 }, { 'x': 2 }, { 'x': 1 }], 'x');
+ * // => [{ 'x': 1 }, { 'x': 2 }]
+ */
+function uniq(array, isSorted, iteratee, thisArg) {
+  var length = array ? array.length : 0;
+  if (!length) {
+    return [];
+  }
+  if (isSorted != null && typeof isSorted != 'boolean') {
+    thisArg = iteratee;
+    iteratee = isIterateeCall(array, isSorted, thisArg) ? undefined : isSorted;
+    isSorted = false;
+  }
+  iteratee = iteratee == null ? iteratee : baseCallback(iteratee, thisArg, 3);
+  return (isSorted)
+    ? sortedUniq(array, iteratee)
+    : baseUniq(array, iteratee);
+}
+
+module.exports = uniq;
+
+},{"lodash._basecallback":31,"lodash._baseuniq":40,"lodash._isiterateecall":45}],31:[function(require,module,exports){
+arguments[4][3][0].apply(exports,arguments)
+},{"dup":3,"lodash._baseisequal":32,"lodash._bindcallback":36,"lodash.isarray":46,"lodash.pairs":37}],32:[function(require,module,exports){
+arguments[4][4][0].apply(exports,arguments)
+},{"dup":4,"lodash.isarray":46,"lodash.istypedarray":33,"lodash.keys":34}],33:[function(require,module,exports){
+arguments[4][5][0].apply(exports,arguments)
+},{"dup":5}],34:[function(require,module,exports){
+arguments[4][12][0].apply(exports,arguments)
+},{"dup":12,"lodash._getnative":44,"lodash.isarguments":35,"lodash.isarray":46}],35:[function(require,module,exports){
+arguments[4][14][0].apply(exports,arguments)
+},{"dup":14}],36:[function(require,module,exports){
+arguments[4][6][0].apply(exports,arguments)
+},{"dup":6}],37:[function(require,module,exports){
+arguments[4][7][0].apply(exports,arguments)
+},{"dup":7,"lodash.keys":38}],38:[function(require,module,exports){
+arguments[4][12][0].apply(exports,arguments)
+},{"dup":12,"lodash._getnative":44,"lodash.isarguments":39,"lodash.isarray":46}],39:[function(require,module,exports){
+arguments[4][14][0].apply(exports,arguments)
+},{"dup":14}],40:[function(require,module,exports){
+/**
+ * lodash 3.0.3 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+var baseIndexOf = require('lodash._baseindexof'),
+    cacheIndexOf = require('lodash._cacheindexof'),
+    createCache = require('lodash._createcache');
+
+/** Used as the size to enable large array optimizations. */
+var LARGE_ARRAY_SIZE = 200;
+
+/**
+ * The base implementation of `_.uniq` without support for callback shorthands
+ * and `this` binding.
+ *
+ * @private
+ * @param {Array} array The array to inspect.
+ * @param {Function} [iteratee] The function invoked per iteration.
+ * @returns {Array} Returns the new duplicate-value-free array.
+ */
+function baseUniq(array, iteratee) {
+  var index = -1,
+      indexOf = baseIndexOf,
+      length = array.length,
+      isCommon = true,
+      isLarge = isCommon && length >= LARGE_ARRAY_SIZE,
+      seen = isLarge ? createCache() : null,
+      result = [];
+
+  if (seen) {
+    indexOf = cacheIndexOf;
+    isCommon = false;
+  } else {
+    isLarge = false;
+    seen = iteratee ? [] : result;
+  }
+  outer:
+  while (++index < length) {
+    var value = array[index],
+        computed = iteratee ? iteratee(value, index, array) : value;
+
+    if (isCommon && value === value) {
+      var seenIndex = seen.length;
+      while (seenIndex--) {
+        if (seen[seenIndex] === computed) {
+          continue outer;
+        }
+      }
+      if (iteratee) {
+        seen.push(computed);
+      }
+      result.push(value);
+    }
+    else if (indexOf(seen, computed, 0) < 0) {
+      if (iteratee || isLarge) {
+        seen.push(computed);
+      }
+      result.push(value);
+    }
+  }
+  return result;
+}
+
+module.exports = baseUniq;
+
+},{"lodash._baseindexof":41,"lodash._cacheindexof":42,"lodash._createcache":43}],41:[function(require,module,exports){
+/**
+ * lodash 3.1.0 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.2 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+
+/**
+ * The base implementation of `_.indexOf` without support for binary searches.
+ *
+ * @private
+ * @param {Array} array The array to search.
+ * @param {*} value The value to search for.
+ * @param {number} fromIndex The index to search from.
+ * @returns {number} Returns the index of the matched value, else `-1`.
+ */
+function baseIndexOf(array, value, fromIndex) {
+  if (value !== value) {
+    return indexOfNaN(array, fromIndex);
+  }
+  var index = fromIndex - 1,
+      length = array.length;
+
+  while (++index < length) {
+    if (array[index] === value) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Gets the index at which the first occurrence of `NaN` is found in `array`.
+ * If `fromRight` is provided elements of `array` are iterated from right to left.
+ *
+ * @private
+ * @param {Array} array The array to search.
+ * @param {number} fromIndex The index to search from.
+ * @param {boolean} [fromRight] Specify iterating from right to left.
+ * @returns {number} Returns the index of the matched `NaN`, else `-1`.
+ */
+function indexOfNaN(array, fromIndex, fromRight) {
+  var length = array.length,
+      index = fromIndex + (fromRight ? 0 : -1);
+
+  while ((fromRight ? index-- : ++index < length)) {
+    var other = array[index];
+    if (other !== other) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+module.exports = baseIndexOf;
+
+},{}],42:[function(require,module,exports){
+/**
+ * lodash 3.0.2 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+
+/**
+ * Checks if `value` is in `cache` mimicking the return signature of
+ * `_.indexOf` by returning `0` if the value is found, else `-1`.
+ *
+ * @private
+ * @param {Object} cache The cache to search.
+ * @param {*} value The value to search for.
+ * @returns {number} Returns `0` if `value` is found, else `-1`.
+ */
+function cacheIndexOf(cache, value) {
+  var data = cache.data,
+      result = (typeof value == 'string' || isObject(value)) ? data.set.has(value) : data.hash[value];
+
+  return result ? 0 : -1;
+}
+
+/**
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
+ * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(1);
+ * // => false
+ */
+function isObject(value) {
+  // Avoid a V8 JIT bug in Chrome 19-20.
+  // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+module.exports = cacheIndexOf;
+
+},{}],43:[function(require,module,exports){
+(function (global){
+/**
+ * lodash 3.1.2 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+var getNative = require('lodash._getnative');
+
+/** Native method references. */
+var Set = getNative(global, 'Set');
+
+/* Native method references for those with the same name as other `lodash` methods. */
+var nativeCreate = getNative(Object, 'create');
+
+/**
+ *
+ * Creates a cache object to store unique values.
+ *
+ * @private
+ * @param {Array} [values] The values to cache.
+ */
+function SetCache(values) {
+  var length = values ? values.length : 0;
+
+  this.data = { 'hash': nativeCreate(null), 'set': new Set };
+  while (length--) {
+    this.push(values[length]);
+  }
+}
+
+/**
+ * Adds `value` to the cache.
+ *
+ * @private
+ * @name push
+ * @memberOf SetCache
+ * @param {*} value The value to cache.
+ */
+function cachePush(value) {
+  var data = this.data;
+  if (typeof value == 'string' || isObject(value)) {
+    data.set.add(value);
+  } else {
+    data.hash[value] = true;
+  }
+}
+
+/**
+ * Creates a `Set` cache object to optimize linear searches of large arrays.
+ *
+ * @private
+ * @param {Array} [values] The values to cache.
+ * @returns {null|Object} Returns the new cache object if `Set` is supported, else `null`.
+ */
+function createCache(values) {
+  return (nativeCreate && Set) ? new SetCache(values) : null;
+}
+
+/**
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
+ * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(1);
+ * // => false
+ */
+function isObject(value) {
+  // Avoid a V8 JIT bug in Chrome 19-20.
+  // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+// Add functions to the `Set` cache.
+SetCache.prototype.push = cachePush;
+
+module.exports = createCache;
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"lodash._getnative":44}],44:[function(require,module,exports){
+arguments[4][13][0].apply(exports,arguments)
+},{"dup":13}],45:[function(require,module,exports){
+/**
+ * lodash 3.0.9 (Custom Build) <https://lodash.com/>
+ * Build: `lodash modern modularize exports="npm" -o ./`
+ * Copyright 2012-2015 The Dojo Foundation <http://dojofoundation.org/>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ * Available under MIT license <https://lodash.com/license>
+ */
+
+/** Used to detect unsigned integer values. */
+var reIsUint = /^\d+$/;
+
+/**
+ * Used as the [maximum length](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-number.max_safe_integer)
+ * of an array-like value.
+ */
+var MAX_SAFE_INTEGER = 9007199254740991;
+
+/**
+ * The base implementation of `_.property` without support for deep paths.
+ *
+ * @private
+ * @param {string} key The key of the property to get.
+ * @returns {Function} Returns the new function.
+ */
+function baseProperty(key) {
+  return function(object) {
+    return object == null ? undefined : object[key];
+  };
+}
+
+/**
+ * Gets the "length" property value of `object`.
+ *
+ * **Note:** This function is used to avoid a [JIT bug](https://bugs.webkit.org/show_bug.cgi?id=142792)
+ * that affects Safari on at least iOS 8.1-8.3 ARM64.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @returns {*} Returns the "length" value.
+ */
+var getLength = baseProperty('length');
+
+/**
+ * Checks if `value` is array-like.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is array-like, else `false`.
+ */
+function isArrayLike(value) {
+  return value != null && isLength(getLength(value));
+}
+
+/**
+ * Checks if `value` is a valid array-like index.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @param {number} [length=MAX_SAFE_INTEGER] The upper bounds of a valid index.
+ * @returns {boolean} Returns `true` if `value` is a valid index, else `false`.
+ */
+function isIndex(value, length) {
+  value = (typeof value == 'number' || reIsUint.test(value)) ? +value : -1;
+  length = length == null ? MAX_SAFE_INTEGER : length;
+  return value > -1 && value % 1 == 0 && value < length;
+}
+
+/**
+ * Checks if the provided arguments are from an iteratee call.
+ *
+ * @private
+ * @param {*} value The potential iteratee value argument.
+ * @param {*} index The potential iteratee index or key argument.
+ * @param {*} object The potential iteratee object argument.
+ * @returns {boolean} Returns `true` if the arguments are from an iteratee call, else `false`.
+ */
+function isIterateeCall(value, index, object) {
+  if (!isObject(object)) {
+    return false;
+  }
+  var type = typeof index;
+  if (type == 'number'
+      ? (isArrayLike(object) && isIndex(index, object.length))
+      : (type == 'string' && index in object)) {
+    var other = object[index];
+    return value === value ? (value === other) : (other !== other);
+  }
+  return false;
+}
+
+/**
+ * Checks if `value` is a valid array-like length.
+ *
+ * **Note:** This function is based on [`ToLength`](https://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength).
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a valid length, else `false`.
+ */
+function isLength(value) {
+  return typeof value == 'number' && value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
+}
+
+/**
+ * Checks if `value` is the [language type](https://es5.github.io/#x8) of `Object`.
+ * (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(1);
+ * // => false
+ */
+function isObject(value) {
+  // Avoid a V8 JIT bug in Chrome 19-20.
+  // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+module.exports = isIterateeCall;
+
+},{}],46:[function(require,module,exports){
+arguments[4][11][0].apply(exports,arguments)
+},{"dup":11}],47:[function(require,module,exports){
+/*global define:false */
+/**
+ * Copyright 2015 Craig Campbell
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * Mousetrap is a simple keyboard shortcut library for Javascript with
+ * no external dependencies
+ *
+ * @version 1.5.3
+ * @url craig.is/killing/mice
+ */
+(function(window, document, undefined) {
+
+    /**
+     * mapping of special keycodes to their corresponding keys
+     *
+     * everything in this dictionary cannot use keypress events
+     * so it has to be here to map to the correct keycodes for
+     * keyup/keydown events
+     *
+     * @type {Object}
+     */
+    var _MAP = {
+        8: 'backspace',
+        9: 'tab',
+        13: 'enter',
+        16: 'shift',
+        17: 'ctrl',
+        18: 'alt',
+        20: 'capslock',
+        27: 'esc',
+        32: 'space',
+        33: 'pageup',
+        34: 'pagedown',
+        35: 'end',
+        36: 'home',
+        37: 'left',
+        38: 'up',
+        39: 'right',
+        40: 'down',
+        45: 'ins',
+        46: 'del',
+        91: 'meta',
+        93: 'meta',
+        224: 'meta'
+    };
+
+    /**
+     * mapping for special characters so they can support
+     *
+     * this dictionary is only used incase you want to bind a
+     * keyup or keydown event to one of these keys
+     *
+     * @type {Object}
+     */
+    var _KEYCODE_MAP = {
+        106: '*',
+        107: '+',
+        109: '-',
+        110: '.',
+        111 : '/',
+        186: ';',
+        187: '=',
+        188: ',',
+        189: '-',
+        190: '.',
+        191: '/',
+        192: '`',
+        219: '[',
+        220: '\\',
+        221: ']',
+        222: '\''
+    };
+
+    /**
+     * this is a mapping of keys that require shift on a US keypad
+     * back to the non shift equivelents
+     *
+     * this is so you can use keyup events with these keys
+     *
+     * note that this will only work reliably on US keyboards
+     *
+     * @type {Object}
+     */
+    var _SHIFT_MAP = {
+        '~': '`',
+        '!': '1',
+        '@': '2',
+        '#': '3',
+        '$': '4',
+        '%': '5',
+        '^': '6',
+        '&': '7',
+        '*': '8',
+        '(': '9',
+        ')': '0',
+        '_': '-',
+        '+': '=',
+        ':': ';',
+        '\"': '\'',
+        '<': ',',
+        '>': '.',
+        '?': '/',
+        '|': '\\'
+    };
+
+    /**
+     * this is a list of special strings you can use to map
+     * to modifier keys when you specify your keyboard shortcuts
+     *
+     * @type {Object}
+     */
+    var _SPECIAL_ALIASES = {
+        'option': 'alt',
+        'command': 'meta',
+        'return': 'enter',
+        'escape': 'esc',
+        'plus': '+',
+        'mod': /Mac|iPod|iPhone|iPad/.test(navigator.platform) ? 'meta' : 'ctrl'
+    };
+
+    /**
+     * variable to store the flipped version of _MAP from above
+     * needed to check if we should use keypress or not when no action
+     * is specified
+     *
+     * @type {Object|undefined}
+     */
+    var _REVERSE_MAP;
+
+    /**
+     * loop through the f keys, f1 to f19 and add them to the map
+     * programatically
+     */
+    for (var i = 1; i < 20; ++i) {
+        _MAP[111 + i] = 'f' + i;
+    }
+
+    /**
+     * loop through to map numbers on the numeric keypad
+     */
+    for (i = 0; i <= 9; ++i) {
+        _MAP[i + 96] = i;
+    }
+
+    /**
+     * cross browser add event method
+     *
+     * @param {Element|HTMLDocument} object
+     * @param {string} type
+     * @param {Function} callback
+     * @returns void
+     */
+    function _addEvent(object, type, callback) {
+        if (object.addEventListener) {
+            object.addEventListener(type, callback, false);
+            return;
+        }
+
+        object.attachEvent('on' + type, callback);
+    }
+
+    /**
+     * takes the event and returns the key character
+     *
+     * @param {Event} e
+     * @return {string}
+     */
+    function _characterFromEvent(e) {
+
+        // for keypress events we should return the character as is
+        if (e.type == 'keypress') {
+            var character = String.fromCharCode(e.which);
+
+            // if the shift key is not pressed then it is safe to assume
+            // that we want the character to be lowercase.  this means if
+            // you accidentally have caps lock on then your key bindings
+            // will continue to work
+            //
+            // the only side effect that might not be desired is if you
+            // bind something like 'A' cause you want to trigger an
+            // event when capital A is pressed caps lock will no longer
+            // trigger the event.  shift+a will though.
+            if (!e.shiftKey) {
+                character = character.toLowerCase();
+            }
+
+            return character;
+        }
+
+        // for non keypress events the special maps are needed
+        if (_MAP[e.which]) {
+            return _MAP[e.which];
+        }
+
+        if (_KEYCODE_MAP[e.which]) {
+            return _KEYCODE_MAP[e.which];
+        }
+
+        // if it is not in the special map
+
+        // with keydown and keyup events the character seems to always
+        // come in as an uppercase character whether you are pressing shift
+        // or not.  we should make sure it is always lowercase for comparisons
+        return String.fromCharCode(e.which).toLowerCase();
+    }
+
+    /**
+     * checks if two arrays are equal
+     *
+     * @param {Array} modifiers1
+     * @param {Array} modifiers2
+     * @returns {boolean}
+     */
+    function _modifiersMatch(modifiers1, modifiers2) {
+        return modifiers1.sort().join(',') === modifiers2.sort().join(',');
+    }
+
+    /**
+     * takes a key event and figures out what the modifiers are
+     *
+     * @param {Event} e
+     * @returns {Array}
+     */
+    function _eventModifiers(e) {
+        var modifiers = [];
+
+        if (e.shiftKey) {
+            modifiers.push('shift');
+        }
+
+        if (e.altKey) {
+            modifiers.push('alt');
+        }
+
+        if (e.ctrlKey) {
+            modifiers.push('ctrl');
+        }
+
+        if (e.metaKey) {
+            modifiers.push('meta');
+        }
+
+        return modifiers;
+    }
+
+    /**
+     * prevents default for this event
+     *
+     * @param {Event} e
+     * @returns void
+     */
+    function _preventDefault(e) {
+        if (e.preventDefault) {
+            e.preventDefault();
+            return;
+        }
+
+        e.returnValue = false;
+    }
+
+    /**
+     * stops propogation for this event
+     *
+     * @param {Event} e
+     * @returns void
+     */
+    function _stopPropagation(e) {
+        if (e.stopPropagation) {
+            e.stopPropagation();
+            return;
+        }
+
+        e.cancelBubble = true;
+    }
+
+    /**
+     * determines if the keycode specified is a modifier key or not
+     *
+     * @param {string} key
+     * @returns {boolean}
+     */
+    function _isModifier(key) {
+        return key == 'shift' || key == 'ctrl' || key == 'alt' || key == 'meta';
+    }
+
+    /**
+     * reverses the map lookup so that we can look for specific keys
+     * to see what can and can't use keypress
+     *
+     * @return {Object}
+     */
+    function _getReverseMap() {
+        if (!_REVERSE_MAP) {
+            _REVERSE_MAP = {};
+            for (var key in _MAP) {
+
+                // pull out the numeric keypad from here cause keypress should
+                // be able to detect the keys from the character
+                if (key > 95 && key < 112) {
+                    continue;
+                }
+
+                if (_MAP.hasOwnProperty(key)) {
+                    _REVERSE_MAP[_MAP[key]] = key;
+                }
+            }
+        }
+        return _REVERSE_MAP;
+    }
+
+    /**
+     * picks the best action based on the key combination
+     *
+     * @param {string} key - character for key
+     * @param {Array} modifiers
+     * @param {string=} action passed in
+     */
+    function _pickBestAction(key, modifiers, action) {
+
+        // if no action was picked in we should try to pick the one
+        // that we think would work best for this key
+        if (!action) {
+            action = _getReverseMap()[key] ? 'keydown' : 'keypress';
+        }
+
+        // modifier keys don't work as expected with keypress,
+        // switch to keydown
+        if (action == 'keypress' && modifiers.length) {
+            action = 'keydown';
+        }
+
+        return action;
+    }
+
+    /**
+     * Converts from a string key combination to an array
+     *
+     * @param  {string} combination like "command+shift+l"
+     * @return {Array}
+     */
+    function _keysFromString(combination) {
+        if (combination === '+') {
+            return ['+'];
+        }
+
+        combination = combination.replace(/\+{2}/g, '+plus');
+        return combination.split('+');
+    }
+
+    /**
+     * Gets info for a specific key combination
+     *
+     * @param  {string} combination key combination ("command+s" or "a" or "*")
+     * @param  {string=} action
+     * @returns {Object}
+     */
+    function _getKeyInfo(combination, action) {
+        var keys;
+        var key;
+        var i;
+        var modifiers = [];
+
+        // take the keys from this pattern and figure out what the actual
+        // pattern is all about
+        keys = _keysFromString(combination);
+
+        for (i = 0; i < keys.length; ++i) {
+            key = keys[i];
+
+            // normalize key names
+            if (_SPECIAL_ALIASES[key]) {
+                key = _SPECIAL_ALIASES[key];
+            }
+
+            // if this is not a keypress event then we should
+            // be smart about using shift keys
+            // this will only work for US keyboards however
+            if (action && action != 'keypress' && _SHIFT_MAP[key]) {
+                key = _SHIFT_MAP[key];
+                modifiers.push('shift');
+            }
+
+            // if this key is a modifier then add it to the list of modifiers
+            if (_isModifier(key)) {
+                modifiers.push(key);
+            }
+        }
+
+        // depending on what the key combination is
+        // we will try to pick the best event for it
+        action = _pickBestAction(key, modifiers, action);
+
+        return {
+            key: key,
+            modifiers: modifiers,
+            action: action
+        };
+    }
+
+    function _belongsTo(element, ancestor) {
+        if (element === null || element === document) {
+            return false;
+        }
+
+        if (element === ancestor) {
+            return true;
+        }
+
+        return _belongsTo(element.parentNode, ancestor);
+    }
+
+    function Mousetrap(targetElement) {
+        var self = this;
+
+        targetElement = targetElement || document;
+
+        if (!(self instanceof Mousetrap)) {
+            return new Mousetrap(targetElement);
+        }
+
+        /**
+         * element to attach key events to
+         *
+         * @type {Element}
+         */
+        self.target = targetElement;
+
+        /**
+         * a list of all the callbacks setup via Mousetrap.bind()
+         *
+         * @type {Object}
+         */
+        self._callbacks = {};
+
+        /**
+         * direct map of string combinations to callbacks used for trigger()
+         *
+         * @type {Object}
+         */
+        self._directMap = {};
+
+        /**
+         * keeps track of what level each sequence is at since multiple
+         * sequences can start out with the same sequence
+         *
+         * @type {Object}
+         */
+        var _sequenceLevels = {};
+
+        /**
+         * variable to store the setTimeout call
+         *
+         * @type {null|number}
+         */
+        var _resetTimer;
+
+        /**
+         * temporary state where we will ignore the next keyup
+         *
+         * @type {boolean|string}
+         */
+        var _ignoreNextKeyup = false;
+
+        /**
+         * temporary state where we will ignore the next keypress
+         *
+         * @type {boolean}
+         */
+        var _ignoreNextKeypress = false;
+
+        /**
+         * are we currently inside of a sequence?
+         * type of action ("keyup" or "keydown" or "keypress") or false
+         *
+         * @type {boolean|string}
+         */
+        var _nextExpectedAction = false;
+
+        /**
+         * resets all sequence counters except for the ones passed in
+         *
+         * @param {Object} doNotReset
+         * @returns void
+         */
+        function _resetSequences(doNotReset) {
+            doNotReset = doNotReset || {};
+
+            var activeSequences = false,
+                key;
+
+            for (key in _sequenceLevels) {
+                if (doNotReset[key]) {
+                    activeSequences = true;
+                    continue;
+                }
+                _sequenceLevels[key] = 0;
+            }
+
+            if (!activeSequences) {
+                _nextExpectedAction = false;
+            }
+        }
+
+        /**
+         * finds all callbacks that match based on the keycode, modifiers,
+         * and action
+         *
+         * @param {string} character
+         * @param {Array} modifiers
+         * @param {Event|Object} e
+         * @param {string=} sequenceName - name of the sequence we are looking for
+         * @param {string=} combination
+         * @param {number=} level
+         * @returns {Array}
+         */
+        function _getMatches(character, modifiers, e, sequenceName, combination, level) {
+            var i;
+            var callback;
+            var matches = [];
+            var action = e.type;
+
+            // if there are no events related to this keycode
+            if (!self._callbacks[character]) {
+                return [];
+            }
+
+            // if a modifier key is coming up on its own we should allow it
+            if (action == 'keyup' && _isModifier(character)) {
+                modifiers = [character];
+            }
+
+            // loop through all callbacks for the key that was pressed
+            // and see if any of them match
+            for (i = 0; i < self._callbacks[character].length; ++i) {
+                callback = self._callbacks[character][i];
+
+                // if a sequence name is not specified, but this is a sequence at
+                // the wrong level then move onto the next match
+                if (!sequenceName && callback.seq && _sequenceLevels[callback.seq] != callback.level) {
+                    continue;
+                }
+
+                // if the action we are looking for doesn't match the action we got
+                // then we should keep going
+                if (action != callback.action) {
+                    continue;
+                }
+
+                // if this is a keypress event and the meta key and control key
+                // are not pressed that means that we need to only look at the
+                // character, otherwise check the modifiers as well
+                //
+                // chrome will not fire a keypress if meta or control is down
+                // safari will fire a keypress if meta or meta+shift is down
+                // firefox will fire a keypress if meta or control is down
+                if ((action == 'keypress' && !e.metaKey && !e.ctrlKey) || _modifiersMatch(modifiers, callback.modifiers)) {
+
+                    // when you bind a combination or sequence a second time it
+                    // should overwrite the first one.  if a sequenceName or
+                    // combination is specified in this call it does just that
+                    //
+                    // @todo make deleting its own method?
+                    var deleteCombo = !sequenceName && callback.combo == combination;
+                    var deleteSequence = sequenceName && callback.seq == sequenceName && callback.level == level;
+                    if (deleteCombo || deleteSequence) {
+                        self._callbacks[character].splice(i, 1);
+                    }
+
+                    matches.push(callback);
+                }
+            }
+
+            return matches;
+        }
+
+        /**
+         * actually calls the callback function
+         *
+         * if your callback function returns false this will use the jquery
+         * convention - prevent default and stop propogation on the event
+         *
+         * @param {Function} callback
+         * @param {Event} e
+         * @returns void
+         */
+        function _fireCallback(callback, e, combo, sequence) {
+
+            // if this event should not happen stop here
+            if (self.stopCallback(e, e.target || e.srcElement, combo, sequence)) {
+                return;
+            }
+
+            if (callback(e, combo) === false) {
+                _preventDefault(e);
+                _stopPropagation(e);
+            }
+        }
+
+        /**
+         * handles a character key event
+         *
+         * @param {string} character
+         * @param {Array} modifiers
+         * @param {Event} e
+         * @returns void
+         */
+        self._handleKey = function(character, modifiers, e) {
+            var callbacks = _getMatches(character, modifiers, e);
+            var i;
+            var doNotReset = {};
+            var maxLevel = 0;
+            var processedSequenceCallback = false;
+
+            // Calculate the maxLevel for sequences so we can only execute the longest callback sequence
+            for (i = 0; i < callbacks.length; ++i) {
+                if (callbacks[i].seq) {
+                    maxLevel = Math.max(maxLevel, callbacks[i].level);
+                }
+            }
+
+            // loop through matching callbacks for this key event
+            for (i = 0; i < callbacks.length; ++i) {
+
+                // fire for all sequence callbacks
+                // this is because if for example you have multiple sequences
+                // bound such as "g i" and "g t" they both need to fire the
+                // callback for matching g cause otherwise you can only ever
+                // match the first one
+                if (callbacks[i].seq) {
+
+                    // only fire callbacks for the maxLevel to prevent
+                    // subsequences from also firing
+                    //
+                    // for example 'a option b' should not cause 'option b' to fire
+                    // even though 'option b' is part of the other sequence
+                    //
+                    // any sequences that do not match here will be discarded
+                    // below by the _resetSequences call
+                    if (callbacks[i].level != maxLevel) {
+                        continue;
+                    }
+
+                    processedSequenceCallback = true;
+
+                    // keep a list of which sequences were matches for later
+                    doNotReset[callbacks[i].seq] = 1;
+                    _fireCallback(callbacks[i].callback, e, callbacks[i].combo, callbacks[i].seq);
+                    continue;
+                }
+
+                // if there were no sequence matches but we are still here
+                // that means this is a regular match so we should fire that
+                if (!processedSequenceCallback) {
+                    _fireCallback(callbacks[i].callback, e, callbacks[i].combo);
+                }
+            }
+
+            // if the key you pressed matches the type of sequence without
+            // being a modifier (ie "keyup" or "keypress") then we should
+            // reset all sequences that were not matched by this event
+            //
+            // this is so, for example, if you have the sequence "h a t" and you
+            // type "h e a r t" it does not match.  in this case the "e" will
+            // cause the sequence to reset
+            //
+            // modifier keys are ignored because you can have a sequence
+            // that contains modifiers such as "enter ctrl+space" and in most
+            // cases the modifier key will be pressed before the next key
+            //
+            // also if you have a sequence such as "ctrl+b a" then pressing the
+            // "b" key will trigger a "keypress" and a "keydown"
+            //
+            // the "keydown" is expected when there is a modifier, but the
+            // "keypress" ends up matching the _nextExpectedAction since it occurs
+            // after and that causes the sequence to reset
+            //
+            // we ignore keypresses in a sequence that directly follow a keydown
+            // for the same character
+            var ignoreThisKeypress = e.type == 'keypress' && _ignoreNextKeypress;
+            if (e.type == _nextExpectedAction && !_isModifier(character) && !ignoreThisKeypress) {
+                _resetSequences(doNotReset);
+            }
+
+            _ignoreNextKeypress = processedSequenceCallback && e.type == 'keydown';
+        };
+
+        /**
+         * handles a keydown event
+         *
+         * @param {Event} e
+         * @returns void
+         */
+        function _handleKeyEvent(e) {
+
+            // normalize e.which for key events
+            // @see http://stackoverflow.com/questions/4285627/javascript-keycode-vs-charcode-utter-confusion
+            if (typeof e.which !== 'number') {
+                e.which = e.keyCode;
+            }
+
+            var character = _characterFromEvent(e);
+
+            // no character found then stop
+            if (!character) {
+                return;
+            }
+
+            // need to use === for the character check because the character can be 0
+            if (e.type == 'keyup' && _ignoreNextKeyup === character) {
+                _ignoreNextKeyup = false;
+                return;
+            }
+
+            self.handleKey(character, _eventModifiers(e), e);
+        }
+
+        /**
+         * called to set a 1 second timeout on the specified sequence
+         *
+         * this is so after each key press in the sequence you have 1 second
+         * to press the next key before you have to start over
+         *
+         * @returns void
+         */
+        function _resetSequenceTimer() {
+            clearTimeout(_resetTimer);
+            _resetTimer = setTimeout(_resetSequences, 1000);
+        }
+
+        /**
+         * binds a key sequence to an event
+         *
+         * @param {string} combo - combo specified in bind call
+         * @param {Array} keys
+         * @param {Function} callback
+         * @param {string=} action
+         * @returns void
+         */
+        function _bindSequence(combo, keys, callback, action) {
+
+            // start off by adding a sequence level record for this combination
+            // and setting the level to 0
+            _sequenceLevels[combo] = 0;
+
+            /**
+             * callback to increase the sequence level for this sequence and reset
+             * all other sequences that were active
+             *
+             * @param {string} nextAction
+             * @returns {Function}
+             */
+            function _increaseSequence(nextAction) {
+                return function() {
+                    _nextExpectedAction = nextAction;
+                    ++_sequenceLevels[combo];
+                    _resetSequenceTimer();
+                };
+            }
+
+            /**
+             * wraps the specified callback inside of another function in order
+             * to reset all sequence counters as soon as this sequence is done
+             *
+             * @param {Event} e
+             * @returns void
+             */
+            function _callbackAndReset(e) {
+                _fireCallback(callback, e, combo);
+
+                // we should ignore the next key up if the action is key down
+                // or keypress.  this is so if you finish a sequence and
+                // release the key the final key will not trigger a keyup
+                if (action !== 'keyup') {
+                    _ignoreNextKeyup = _characterFromEvent(e);
+                }
+
+                // weird race condition if a sequence ends with the key
+                // another sequence begins with
+                setTimeout(_resetSequences, 10);
+            }
+
+            // loop through keys one at a time and bind the appropriate callback
+            // function.  for any key leading up to the final one it should
+            // increase the sequence. after the final, it should reset all sequences
+            //
+            // if an action is specified in the original bind call then that will
+            // be used throughout.  otherwise we will pass the action that the
+            // next key in the sequence should match.  this allows a sequence
+            // to mix and match keypress and keydown events depending on which
+            // ones are better suited to the key provided
+            for (var i = 0; i < keys.length; ++i) {
+                var isFinal = i + 1 === keys.length;
+                var wrappedCallback = isFinal ? _callbackAndReset : _increaseSequence(action || _getKeyInfo(keys[i + 1]).action);
+                _bindSingle(keys[i], wrappedCallback, action, combo, i);
+            }
+        }
+
+        /**
+         * binds a single keyboard combination
+         *
+         * @param {string} combination
+         * @param {Function} callback
+         * @param {string=} action
+         * @param {string=} sequenceName - name of sequence if part of sequence
+         * @param {number=} level - what part of the sequence the command is
+         * @returns void
+         */
+        function _bindSingle(combination, callback, action, sequenceName, level) {
+
+            // store a direct mapped reference for use with Mousetrap.trigger
+            self._directMap[combination + ':' + action] = callback;
+
+            // make sure multiple spaces in a row become a single space
+            combination = combination.replace(/\s+/g, ' ');
+
+            var sequence = combination.split(' ');
+            var info;
+
+            // if this pattern is a sequence of keys then run through this method
+            // to reprocess each pattern one key at a time
+            if (sequence.length > 1) {
+                _bindSequence(combination, sequence, callback, action);
+                return;
+            }
+
+            info = _getKeyInfo(combination, action);
+
+            // make sure to initialize array if this is the first time
+            // a callback is added for this key
+            self._callbacks[info.key] = self._callbacks[info.key] || [];
+
+            // remove an existing match if there is one
+            _getMatches(info.key, info.modifiers, {type: info.action}, sequenceName, combination, level);
+
+            // add this call back to the array
+            // if it is a sequence put it at the beginning
+            // if not put it at the end
+            //
+            // this is important because the way these are processed expects
+            // the sequence ones to come first
+            self._callbacks[info.key][sequenceName ? 'unshift' : 'push']({
+                callback: callback,
+                modifiers: info.modifiers,
+                action: info.action,
+                seq: sequenceName,
+                level: level,
+                combo: combination
+            });
+        }
+
+        /**
+         * binds multiple combinations to the same callback
+         *
+         * @param {Array} combinations
+         * @param {Function} callback
+         * @param {string|undefined} action
+         * @returns void
+         */
+        self._bindMultiple = function(combinations, callback, action) {
+            for (var i = 0; i < combinations.length; ++i) {
+                _bindSingle(combinations[i], callback, action);
+            }
+        };
+
+        // start!
+        _addEvent(targetElement, 'keypress', _handleKeyEvent);
+        _addEvent(targetElement, 'keydown', _handleKeyEvent);
+        _addEvent(targetElement, 'keyup', _handleKeyEvent);
+    }
+
+    /**
+     * binds an event to mousetrap
+     *
+     * can be a single key, a combination of keys separated with +,
+     * an array of keys, or a sequence of keys separated by spaces
+     *
+     * be sure to list the modifier keys first to make sure that the
+     * correct key ends up getting bound (the last key in the pattern)
+     *
+     * @param {string|Array} keys
+     * @param {Function} callback
+     * @param {string=} action - 'keypress', 'keydown', or 'keyup'
+     * @returns void
+     */
+    Mousetrap.prototype.bind = function(keys, callback, action) {
+        var self = this;
+        keys = keys instanceof Array ? keys : [keys];
+        self._bindMultiple.call(self, keys, callback, action);
+        return self;
+    };
+
+    /**
+     * unbinds an event to mousetrap
+     *
+     * the unbinding sets the callback function of the specified key combo
+     * to an empty function and deletes the corresponding key in the
+     * _directMap dict.
+     *
+     * TODO: actually remove this from the _callbacks dictionary instead
+     * of binding an empty function
+     *
+     * the keycombo+action has to be exactly the same as
+     * it was defined in the bind method
+     *
+     * @param {string|Array} keys
+     * @param {string} action
+     * @returns void
+     */
+    Mousetrap.prototype.unbind = function(keys, action) {
+        var self = this;
+        return self.bind.call(self, keys, function() {}, action);
+    };
+
+    /**
+     * triggers an event that has already been bound
+     *
+     * @param {string} keys
+     * @param {string=} action
+     * @returns void
+     */
+    Mousetrap.prototype.trigger = function(keys, action) {
+        var self = this;
+        if (self._directMap[keys + ':' + action]) {
+            self._directMap[keys + ':' + action]({}, keys);
+        }
+        return self;
+    };
+
+    /**
+     * resets the library back to its initial state.  this is useful
+     * if you want to clear out the current keyboard shortcuts and bind
+     * new ones - for example if you switch to another page
+     *
+     * @returns void
+     */
+    Mousetrap.prototype.reset = function() {
+        var self = this;
+        self._callbacks = {};
+        self._directMap = {};
+        return self;
+    };
+
+    /**
+     * should we stop this event before firing off callbacks
+     *
+     * @param {Event} e
+     * @param {Element} element
+     * @return {boolean}
+     */
+    Mousetrap.prototype.stopCallback = function(e, element) {
+        var self = this;
+
+        // if the element has the class "mousetrap" then no need to stop
+        if ((' ' + element.className + ' ').indexOf(' mousetrap ') > -1) {
+            return false;
+        }
+
+        if (_belongsTo(element, self.target)) {
+            return false;
+        }
+
+        // stop for input, select, and textarea
+        return element.tagName == 'INPUT' || element.tagName == 'SELECT' || element.tagName == 'TEXTAREA' || element.isContentEditable;
+    };
+
+    /**
+     * exposes _handleKey publicly so it can be overwritten by extensions
+     */
+    Mousetrap.prototype.handleKey = function() {
+        var self = this;
+        return self._handleKey.apply(self, arguments);
+    };
+
+    /**
+     * Init the global mousetrap functions
+     *
+     * This method is needed to allow the global mousetrap functions to work
+     * now that mousetrap is a constructor function.
+     */
+    Mousetrap.init = function() {
+        var documentMousetrap = Mousetrap(document);
+        for (var method in documentMousetrap) {
+            if (method.charAt(0) !== '_') {
+                Mousetrap[method] = (function(method) {
+                    return function() {
+                        return documentMousetrap[method].apply(documentMousetrap, arguments);
+                    };
+                } (method));
+            }
+        }
+    };
+
+    Mousetrap.init();
+
+    // expose mousetrap to the global object
+    window.Mousetrap = Mousetrap;
+
+    // expose as a common js module
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = Mousetrap;
+    }
+
+    // expose mousetrap as an AMD module
+    if (typeof define === 'function' && define.amd) {
+        define(function() {
+            return Mousetrap;
+        });
+    }
+}) (window, document);
+
+},{}],48:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj["default"] = obj; return newObj; } }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var _constants = require("./constants");
+
+var constants = _interopRequireWildcard(_constants);
+
+var initNum = 1;
+
+var Attractor = (function () {
+    function Attractor(game, center) {
+        _classCallCheck(this, Attractor);
+
+        this.type = "attractor";
+        this.id = initNum;
+        this.isAlive = true;
+
+        this.game = game;
+        this.center = center;
+        this.mass = constants.EarthMass * 4;
+
+        this.radius = this.mass / constants.EarthMass * constants.EarthRadius;
+
+        initNum++;
+    }
+
+    _createClass(Attractor, [{
+        key: "calculateMass",
+        value: function calculateMass() {
+            this.mass = this.radius / constants.EarthRadius * constants.EarthMass;
+        }
+    }, {
+        key: "update",
+        value: function update() {
+            this.color = "hsl(" + 360 / this.game.attractors.length * this.id + ", 100%, 50%)";
+        }
+    }]);
+
+    return Attractor;
+})();
+
+exports["default"] = Attractor;
+module.exports = exports["default"];
+},{"./constants":53}],49:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj["default"] = obj; return newObj; } }
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var _VectorJs = require("./Vector.js");
+
+var _VectorJs2 = _interopRequireDefault(_VectorJs);
+
+var _presenceTracker = require("./presenceTracker");
+
+var _presenceTracker2 = _interopRequireDefault(_presenceTracker);
+
+var _constants = require("./constants");
+
+var constants = _interopRequireWildcard(_constants);
+
+var _pointUtils = require("./pointUtils");
+
+var pointUtils = _interopRequireWildcard(_pointUtils);
+
+var initNum = 0;
+
+var Body = (function () {
+    function Body(game, center, isManual) {
+        var options = arguments.length <= 3 || arguments[3] === undefined ? {} : arguments[3];
+
+        _classCallCheck(this, Body);
+
+        this.game = game;
+        this.center = center;
+        this.isManual = isManual;
+
+        this.isAlive = true;
+        this.type = "body";
+        this.id = initNum;
+        this.originalCenter = { x: center.x, y: center.y };
+
+        this.mass = constants.EarthMass / 2;
+        this.radius = this.mass / constants.EarthMass * constants.EarthRadius;
+
+        var injectionVector = options.initialSpeed !== undefined ? options.initialSpeed : new _VectorJs2["default"](5500, 0, "m/s");
+
+        this.startSpeed = injectionVector.length;
+        this.speed = injectionVector;
+        this.timeSinceUpdate = 0;
+
+        initNum++;
+    }
+
+    _createClass(Body, [{
+        key: "acceleration",
+        value: function acceleration(force) {
+            return force.length / this.mass;
+        }
+    }, {
+        key: "speedNow",
+        value: function speedNow(speed0, force) {
+            return speed0 + this.acceleration(force) * this.timeSinceUpdate;
+        }
+    }, {
+        key: "distanceTravelled",
+        value: function distanceTravelled(speed) {
+            return speed * this.timeSinceUpdate;
+        }
+    }, {
+        key: "shift",
+        value: function shift(speed0, force) {
+            return {
+                x: this.distanceTravelled(this.speedNow(speed0, force)) * Math.cos(force.direction),
+                y: this.distanceTravelled(this.speedNow(speed0, force)) * Math.sin(force.direction)
+            };
+        }
+    }, {
+        key: "update",
+        value: function update(timeSinceUpdate) {
+            var _this = this;
+
+            this.timeSinceUpdate = timeSinceUpdate;
+
+            var vectors = this.game.attractors.map(function (attractor) {
+                var force = constants.G * _this.mass * attractor.mass / Math.pow(pointUtils.distanceBetween(_this.center, attractor.center), 2);
+
+                return new _VectorJs2["default"](force, Math.atan2(_this.center.y - attractor.center.y, _this.center.x - attractor.center.x) + Math.PI, "N");
+            });
+
+            var planetsVector = vectors.length > 0 ? vectors.reduce(function (vecA, vecB) {
+                return vecA.add(vecB);
+            }) : new _VectorJs2["default"](0, 0, "N");
+            var projectedVectors = planetsVector.projectionOnto(this.speed);
+
+            var delta = {
+                a: this.shift(this.speed.length, projectedVectors.a),
+                b: this.shift(0, projectedVectors.b)
+            };
+
+            delta.x = delta.a.x + delta.b.x;
+            delta.y = delta.a.y + delta.b.y;
+
+            var previousSpeed = this.speed.length;
+            this.speed = new _VectorJs2["default"](pointUtils.distanceBetween({ x: 0, y: 0 }, delta) / timeSinceUpdate, Math.atan2(delta.y, delta.x), "m/s");
+
+            var currentAcceleration = this.speed.length - previousSpeed;
+            var min = 255;
+            var max = 360;
+            var hue = Math.min(currentAcceleration / max, 1) * (max - min) + min;
+            this.color = "hsl(" + hue + ", 100%, 70%)";
+
+            this.isAlive = !pointUtils.willCollide(this.center, delta, this.game.attractors);
+
+            this.center.x += delta.x;
+            this.center.y += delta.y;
+        }
+    }]);
+
+    return Body;
+})();
+
+exports["default"] = Body;
+module.exports = exports["default"];
+},{"./Vector.js":51,"./constants":53,"./pointUtils":55,"./presenceTracker":56}],50:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj["default"] = obj; return newObj; } }
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var _Vector = require("./Vector");
+
+var _Vector2 = _interopRequireDefault(_Vector);
+
+var _Body = require("./Body");
+
+var _Body2 = _interopRequireDefault(_Body);
+
+var _canvasDraw = require("./canvasDraw");
+
+var canvasDraw = _interopRequireWildcard(_canvasDraw);
+
+var _pointUtils = require("./pointUtils");
+
+var pointUtils = _interopRequireWildcard(_pointUtils);
+
+var _constants = require("./constants");
+
+var constants = _interopRequireWildcard(_constants);
+
+var initNum = 0;
+
+var Cannon = (function () {
+    function Cannon(game, center, toPoint) {
+        _classCallCheck(this, Cannon);
+
+        this.game = game;
+        this.type = "cannon";
+        this.id = initNum;
+        this.isAlive = true;
+        this.color = "red";
+        this.center = center;
+        this.mass = constants.EarthMass / 2;
+        this.radius = this.mass / constants.EarthMass * constants.EarthRadius;
+
+        this.updates = 0;
+        this.rate = 50;
+
+        this.select(toPoint); // creates this.shootVector
+
+        initNum++;
+    }
+
+    _createClass(Cannon, [{
+        key: "vectorToPoint",
+        value: function vectorToPoint() {
+            var scaledVector = this.shootVector.scale(10e3);
+
+            var vectorToPoint = {
+                x: this.center.x + scaledVector.getDeltaX(),
+                y: this.center.y + scaledVector.getDeltaY()
+            };
+
+            return vectorToPoint;
+        }
+    }, {
+        key: "update",
+        value: function update() {
+            if (this.updates <= 0) {
+                this.updates = this.rate;
+                this.game.addBody(new _Body2["default"](this.game, { x: this.center.x, y: this.center.y }, true, {
+                    initialSpeed: this.shootVector.clone()
+                }));
+            }
+
+            if (this.updates > this.rate) {
+                this.updates = this.rate;
+            }
+
+            canvasDraw.drawLine(this.center, this.vectorToPoint());
+
+            --this.updates;
+        }
+    }, {
+        key: "select",
+        value: function select(point) {
+            this.shootVector = new _Vector2["default"](7000, //pointUtils.distanceBetween(this.center, point),
+            point === undefined ? Math.PI : Math.atan2(this.center.y - point.y, this.center.x - point.x) + Math.PI, "m/s");
+        }
+    }, {
+        key: "deselect",
+        value: function deselect() {
+            this.selected = false;
+        }
+    }]);
+
+    return Cannon;
+})();
+
+exports["default"] = Cannon;
+module.exports = exports["default"];
+},{"./Body":49,"./Vector":51,"./canvasDraw":52,"./constants":53,"./pointUtils":55}],51:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Vector = (function () {
+    function Vector(length, direction, unit) {
+        _classCallCheck(this, Vector);
+
+        if (unit === undefined) throw new Error("missing argument: unit");
+        if (length < 0) throw new Error("length of a vector cannot be negative");
+
+        this.length = length;
+        this.direction = direction;
+        this.unit = unit;
+    }
+
+    _createClass(Vector, [{
+        key: "clone",
+        value: function clone() {
+            return new Vector(this.length, this.direction, this.unit);
+        }
+    }, {
+        key: "getDeltaX",
+        value: function getDeltaX() {
+            return this.length * Math.cos(this.direction);
+        }
+    }, {
+        key: "getDeltaY",
+        value: function getDeltaY() {
+            return this.length * Math.sin(this.direction);
+        }
+    }, {
+        key: "unitVector",
+        value: function unitVector() {
+            return new Vector(1, this.direction, this.unit);
+        }
+    }, {
+        key: "angleTo",
+        value: function angleTo(vector) {
+            var angle = this.direction - vector.direction;
+            return angle < 0 ? angle + Math.PI : angle;
+        }
+    }, {
+        key: "projectionOnto",
+        value: function projectionOnto(axis) {
+            var aX = new Vector(Math.abs(this.length * Math.cos(this.angleTo(axis))), axis.direction, this.unit);
+
+            var aY = this.subtract(aX);
+
+            return { a: aX, b: aY };
+        }
+    }, {
+        key: "scale",
+        value: function scale(scaleAmount) {
+            return new Vector(this.length * scaleAmount, this.direction, this.unit);
+        }
+    }, {
+        key: "opposite",
+        value: function opposite() {
+            return new Vector(this.length, this.direction > Math.PI ? this.direction - Math.PI : this.direction + Math.PI, this.unit);
+        }
+    }, {
+        key: "add",
+        value: function add(vector) {
+            if (this.unit !== vector.unit) throw new Error("Adding incompatible vectors.");
+
+            var totalDeltaX = this.getDeltaX() + vector.getDeltaX();
+            var totalDeltaY = this.getDeltaY() + vector.getDeltaY();
+
+            var length = Math.sqrt(Math.pow(totalDeltaX, 2) + Math.pow(totalDeltaY, 2));
+
+            var direction = Math.atan2(totalDeltaY, totalDeltaX);
+
+            return new Vector(length, direction, this.unit);
+        }
+    }, {
+        key: "subtract",
+        value: function subtract(vector) {
+            return this.add(vector.opposite());
+        }
+    }]);
+
+    return Vector;
+})();
+
+exports["default"] = Vector;
+module.exports = exports["default"];
+},{}],52:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.setScreen = setScreen;
+exports.setColor = setColor;
+exports.drawBody = drawBody;
+exports.drawPoint = drawPoint;
+exports.drawLine = drawLine;
+exports.drawLineF = drawLineF;
+
+var _constants = require("./constants");
+
+var _pointUtils = require("./pointUtils");
+
+var screen = undefined;
+
+function setScreen(newScreen) {
+    screen = newScreen;
+}
+
+function isPointOutOfBounds(point) {
+    return point.x < 0 || point.y < 0 || point.x > screen.canvas.width || point.y > screen.canvas.height;
+}
+
+function setColor(color) {
+    if (screen.fillStyle !== color) screen.fillStyle = color;
+    if (screen.strokeStyle !== color) screen.strokeStyle = color;
+}
+
+function drawBody(body) {
+    var center = (0, _pointUtils.fromReal)(body.center);
+    var radius = (0, _constants.fromReal)(body.radius);
+    if (radius < 1) radius = 1;
+
+    if (isPointOutOfBounds(center)) return;
+
+    screen.beginPath();
+    screen.fillStyle = body.color;
+    screen.moveTo(center.x, center.y);
+    screen.arc(center.x, center.y, radius, 0, 2 * Math.PI, false);
+    screen.fill();
+
+    if (body.selected) {
+        var distance = 10;
+        radius += distance;
+        screen.beginPath();
+        screen.moveTo(center.x - radius, center.y - radius);
+        screen.lineTo(center.x + radius, center.y - radius);
+        screen.lineTo(center.x + radius, center.y + radius);
+        screen.lineTo(center.x - radius, center.y + radius);
+        screen.lineTo(center.x - radius, center.y - radius);
+        screen.stroke();
+        radius -= distance;
+    }
+
+    drawPoint((0, _pointUtils.toReal)(center), undefined, Math.min(radius * 0.1, 4));
+}
+
+function drawPoint(point) {
+    var color = arguments.length <= 1 || arguments[1] === undefined ? "black" : arguments[1];
+    var size = arguments.length <= 2 || arguments[2] === undefined ? 1 : arguments[2];
+
+    point = (0, _pointUtils.fromReal)(point);
+
+    if (isPointOutOfBounds(point)) return;
+
+    screen.fillStyle = color;
+    screen.beginPath();
+    screen.moveTo(point.x, point.y);
+    screen.arc(point.x, point.y, size, 0, Math.PI * 2, false);
+    screen.fill();
+}
+
+function drawLine(pointA, pointB) {
+    var color = arguments.length <= 2 || arguments[2] === undefined ? "black" : arguments[2];
+    var size = arguments.length <= 3 || arguments[3] === undefined ? 1 : arguments[3];
+
+    pointA = (0, _pointUtils.fromReal)(pointA);
+    pointB = (0, _pointUtils.fromReal)(pointB);
+
+    screen.strokeStyle = color;
+    screen.strokeWidth = size;
+    screen.beginPath();
+    screen.moveTo(pointA.x, pointA.y);
+    screen.lineTo(pointB.x, pointB.y);
+    screen.stroke();
+}
+
+function drawLineF(func, color, size, loopAll) {
+    if (color === undefined) color = "black";
+    if (size === undefined) size = 1;
+
+    if (loopAll) {
+        for (var x = 0; x < screen.canvas.width; x++) {
+            drawPoint(screen, { x: x, y: func(x) }, color, size);
+        }
+    } else {
+        drawLine(screen, { x: 0, y: func(0) }, { x: screen.canvas.width, y: func(screen.canvas.width) }, color, size);
+    }
+}
+},{"./constants":53,"./pointUtils":55}],53:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.toReal = toReal;
+exports.fromReal = fromReal;
+var EarthMass = 5972190e18;exports.EarthMass = EarthMass;
+// kilograms
+var EarthRadius = 6371000;exports.EarthRadius = EarthRadius;
+// meters
+var G = 6.673e-11;
+exports.G = G;
+var MetersPerPixel = EarthRadius / 10;
+exports.MetersPerPixel = MetersPerPixel;
+var LightSpeed = 299792458;exports.LightSpeed = LightSpeed;
+// m/s
+var TimeScale = 20;exports.TimeScale = TimeScale;
+// Simulated seconds in real seconds.
+
+function toReal(pixels) {
+    return pixels * MetersPerPixel;
+}
+
+function fromReal(meters) {
+    return meters / MetersPerPixel;
+}
+},{}],54:[function(require,module,exports){
+(function (global){
+"use strict";
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj["default"] = obj; return newObj; } }
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
+
+var _events = require("events");
+
+var _mousetrap = require("mousetrap");
+
+var _mousetrap2 = _interopRequireDefault(_mousetrap);
+
+var _lodashThrottle = require("lodash.throttle");
+
+var _lodashThrottle2 = _interopRequireDefault(_lodashThrottle);
+
+var _lodashFind = require("lodash.find");
+
+var _lodashFind2 = _interopRequireDefault(_lodashFind);
+
+var _lodashUniq = require("lodash.uniq");
+
+var _lodashUniq2 = _interopRequireDefault(_lodashUniq);
+
+var _lodashPick = require("lodash.pick");
+
+var _lodashPick2 = _interopRequireDefault(_lodashPick);
+
+var _presenceTracker = require("./presenceTracker");
+
+var _presenceTracker2 = _interopRequireDefault(_presenceTracker);
+
+var _Attractor = require("./Attractor");
+
+var _Attractor2 = _interopRequireDefault(_Attractor);
+
+var _Cannon = require("./Cannon");
+
+var _Cannon2 = _interopRequireDefault(_Cannon);
+
+var _Body = require("./Body");
+
+var _Body2 = _interopRequireDefault(_Body);
+
+var _canvasDraw = require("./canvasDraw");
+
+var canvasDraw = _interopRequireWildcard(_canvasDraw);
+
+var _constants = require("./constants");
+
+var constants = _interopRequireWildcard(_constants);
+
+var _pointUtils = require("./pointUtils");
+
+var pointUtils = _interopRequireWildcard(_pointUtils);
+
+function Game() {
+    var _this = this;
+
+    this.canvas = document.getElementById("canvas");
+
+    var openButton = document.querySelector("#open-button");
+    var closeButton = document.querySelector("#close-button");
+    var modal = document.querySelector("#directions");
+
+    openButton.addEventListener("click", function () {
+        if (modal.style.display !== "table") modal.style.display = "table";else modal.style.display = "none";
+    });
+    closeButton.addEventListener("click", function () {
+        return modal.style.display = "none";
+    });
+
+    this.canvas.style.position = "absolute";
+    this.computeSize();
+
+    // Get the drawing context.
+    this.screen = this.canvas.getContext('2d');
+    this.screen.font = "10pt Arial";
+
+    canvasDraw.setScreen(this.screen);
+
+    this.deadBodies = [];
+    this.bodies = [];
+    this.attractors = [];
+    this.cannons = [];
+
+    this.attractors.push(new _Attractor2["default"](this, {
+        x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4) // left left top
+    }));
+    this.attractors.push(new _Attractor2["default"](this, {
+        x: constants.toReal(this.size.x / 4 * 3), y: constants.toReal(this.size.y / 4) // left right top
+    }));
+    this.attractors.push(new _Attractor2["default"](this, {
+        x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4 * 3) // left left bottom
+    }));
+    this.attractors.push(new _Attractor2["default"](this, {
+        x: constants.toReal(this.size.x / 4 * 3), y: constants.toReal(this.size.y / 4 * 3) // right right bottom
+    }));
+
+    var spawnBody = function spawnBody(point) {
+        var isManual = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+
+        _this.addBody(new _Body2["default"](_this, point, isManual));
+    };
+
+    var spawnCannon = function spawnCannon(point) {
+        var comparePoint = pointUtils.fromReal(point);
+        var toPoint = pointUtils.toReal({
+            x: comparePoint.x === _this.size.x ? 0 : comparePoint.x === 0 ? _this.size.x : comparePoint.x,
+            y: comparePoint.y === _this.size.y ? 0 : comparePoint.y === 0 ? _this.size.y : comparePoint.y
+        });
+
+        _this.cannons.push(new _Cannon2["default"](_this, point, toPoint));
+    };
+
+    var getClickedObject = function getClickedObject(point) {
+        return (0, _lodashFind2["default"])(_this.attractors.concat(_this.cannons), function (object) {
+            var distance = pointUtils.distanceBetween(object.center, point);
+
+            // User clicked within a 50px circle or the object's radius around the center of the object
+            if (distance <= object.radius) {
+                return object;
+            }
+        });
+    };
+
+    var selectedObject = undefined;
+    var mousePos = undefined;
+
+    var adjustObject = function adjustObject(object, adjustment) {
+        if (object.type === "attractor") {
+            if (selectedObject.radius > constants.toReal(1)) {
+                selectedObject.radius += constants.toReal(adjustment);
+                selectedObject.calculateMass();
+            }
+        } else if (object.type === "cannon") {
+            adjustment = -adjustment;
+            if (selectedObject.rate > 1) {
+                selectedObject.rate += adjustment; // The + should make the rate faster, - slower
+            } else if (selectedObject.rate === 1 && adjustment > 0) {
+                    selectedObject.rate += adjustment;
+                }
+        }
+    };
+
+    _mousetrap2["default"].bind("m", function () {
+        if (mousePos && selectedObject) {
+            selectedObject.center = mousePos;
+        }
+    });
+
+    _mousetrap2["default"].bind("d", function () {
+        if (mousePos && selectedObject) {
+            selectedObject.isAlive = false;
+        }
+    });
+
+    _mousetrap2["default"].bind("+", function () {
+        if (mousePos && selectedObject) {
+            adjustObject(selectedObject, +1);
+        }
+    });
+
+    _mousetrap2["default"].bind("-", function () {
+        if (mousePos && selectedObject) {
+            adjustObject(selectedObject, -1);
+        }
+    });
+
+    _mousetrap2["default"].bind("t", function () {
+        if (mousePos && selectedObject && selectedObject.type === "cannon") {
+            // Selected object is a cannon
+            selectedObject.select(mousePos);
+        }
+    });
+
+    _mousetrap2["default"].bind("shift+b", function () {
+        _this.bodies = [];
+    });
+
+    _mousetrap2["default"].bind("shift+a", function () {
+        _this.attractors = [];
+    });
+
+    _mousetrap2["default"].bind("shift+c", function () {
+        _this.cannons = [];
+    });
+
+    var processSpawning = function processSpawning(type) {
+        if (mousePos) {
+            if (type === "attractor") {
+                _this.attractors.push(new _Attractor2["default"](_this, mousePos));
+            } else if (type === "cannon") {
+                spawnCannon(mousePos);
+            } else if (type === "body") {
+                spawnBody(mousePos, true);
+            }
+        }
+    };
+
+    processSpawning = (0, _lodashThrottle2["default"])(processSpawning, 100, { leading: true, trailing: false });
+
+    _mousetrap2["default"].bind("a", function () {
+        console.log("attractor: a");
+        processSpawning("attractor");
+    });
+
+    _mousetrap2["default"].bind("c", function () {
+        processSpawning("cannon");
+    });
+
+    _mousetrap2["default"].bind("b", function () {
+        processSpawning("body");
+    });
+
+    this.canvas.addEventListener("mousedown", function (e) {
+        var clientX = e.clientX;
+        var clientY = e.clientY;
+
+        var point = pointUtils.toReal({ x: clientX, y: clientY });
+        mousePos = point;
+
+        var clickedObject = getClickedObject(point);
+
+        _this.attractors.concat(_this.cannons).forEach(function (object) {
+            return object.selected = false;
+        });
+        if (clickedObject) {
+            clickedObject.selected = true;
+        }
+
+        selectedObject = clickedObject;
+    });
+
+    this.canvas.addEventListener("mousemove", function (e) {
+        var clientX = e.clientX;
+        var clientY = e.clientY;
+
+        var point = pointUtils.toReal({ x: clientX, y: clientY });
+        mousePos = point;
+    });
+
+    var tick = function tick() {
+        _this.screen.clearRect(0, 0, _this.size.x, _this.size.y); //allows this.update() to draw vectors
+        _this.update();
+        _this.draw();
+        requestAnimationFrame(tick);
+    };
+
+    this.updatedAt = Date.now();
+    requestAnimationFrame(tick);
+}
+
+Game.prototype.pointInAttractor = function (point) {
+    var distanceTo = function distanceTo(attractor) {
+        return Math.ceil(pointUtils.distanceBetween(point, attractor.center));
+    };
+
+    var minumumData = null;
+
+    this.attractors.forEach(function (attractor) {
+        var distance = distanceTo(attractor);
+        if (minumumData === null || distance < minumumData.distance) {
+            minumumData = { distance: distance, attractor: attractor };
+        }
+    });
+
+    if (minumumData && minumumData.attractor.radius >= minumumData.distance) {
+        return minumumData;
+    }
+
+    return null;
+};
+
+Game.prototype.computeSize = function () {
+    this.canvas.width = document.body.clientWidth;
+    this.canvas.height = document.body.clientHeight;
+
+    this.size = { x: this.canvas.width, y: this.canvas.height };
+    this.realSize = { x: constants.toReal(this.size.x), y: constants.toReal(this.size.y) };
+};
+
+Game.prototype.cannonNearPoint = function (point) {
+    var distanceTo = function distanceTo(cannon) {
+        return Math.ceil(pointUtils.distanceBetween(point, cannon.center));
+    };
+
+    var distances = this.cannons.map(function (cannon) {
+        return distanceTo(cannon);
+    });
+
+    var minumumDistance = Math.min.apply(Math, distances);
+
+    var returnVal = null;
+    this.cannons.some(function (cannon) {
+        if (distanceTo(cannon) === minumumDistance) {
+            returnVal = { cannon: cannon, distance: minumumDistance };
+        }
+    });
+
+    return returnVal;
+};
+
+Game.prototype.update = function () {
+    var now = Date.now();
+    var timeSinceUpdate = (now - this.updatedAt) * constants.TimeScale;
+    timeSinceUpdate = Math.min(500, timeSinceUpdate);
+    this.updatedAt = now;
+
+    this.attractors.forEach(function (attractor) {
+        return attractor.update();
+    });
+    this.attractors = this.attractors.filter(function (attractor) {
+        return attractor.isAlive;
+    });
+
+    this.bodies.forEach(function (body) {
+        return body.update(timeSinceUpdate);
+    }); // Update must run before cleanup of dead bodies
+    this.bodies = this.bodies.filter(function (body) {
+        return body.isAlive;
+    });
+
+    this.cannons.forEach(function (cannon) {
+        return cannon.update();
+    });
+    this.cannons = this.cannons.filter(function (cannon) {
+        return cannon.isAlive;
+    });
+};
+
+Game.prototype.draw = function () {
+    this.deadBodies.forEach(function (deadBody) {
+        canvasDraw.drawBody(deadBody);
+    });
+
+    this.bodies
+    // .filter(body => body.isManual)
+    .forEach(canvasDraw.drawBody);
+
+    this.attractors.forEach(canvasDraw.drawBody);
+    this.cannons.forEach(canvasDraw.drawBody);
+
+    canvasDraw.setColor("black");
+    this.screen.fillText("Bodies: " + this.bodies.length + "  Cannons: " + this.cannons.length + " Attractors: " + this.attractors.length, 1, this.size.y);
+};
+
+Game.prototype.addBody = function (body) {
+    this.bodies.push(body);
+};
+
+window.addEventListener("DOMContentLoaded", function () {
+    global.game = new Game();
+});
+window.addEventListener("resize", function () {
+    global.game.computeSize();
+});
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./Attractor":48,"./Body":49,"./Cannon":50,"./canvasDraw":52,"./constants":53,"./pointUtils":55,"./presenceTracker":56,"events":1,"lodash.find":2,"lodash.pick":15,"lodash.throttle":27,"lodash.uniq":30,"mousetrap":47}],55:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.toReal = toReal;
+exports.fromReal = fromReal;
+exports.midpoint = midpoint;
+exports.distanceBetween = distanceBetween;
+exports.distanceToLine = distanceToLine;
+exports.getSlope = getSlope;
+exports.getYIntercept = getYIntercept;
+exports.lineEquation = lineEquation;
+exports.getHitPoints = getHitPoints;
+exports.isPointInCircle = isPointInCircle;
+exports.isBetween = isBetween;
+exports.willCollide = willCollide;
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj["default"] = obj; return newObj; } }
+
+var _canvasDraw = require("./canvasDraw");
+
+var canvasDraw = _interopRequireWildcard(_canvasDraw);
+
+var _constants = require("./constants");
+
+var constants = _interopRequireWildcard(_constants);
+
+function toReal(point) {
+    return { x: constants.toReal(point.x), y: constants.toReal(point.y) };
+}
+
+function fromReal(point) {
+    return { x: constants.fromReal(point.x), y: constants.fromReal(point.y) };
+}
+
+function midpoint(pointA, pointB) {
+    return { x: (pointA.x + pointB.x) / 2, y: (pointA.y + pointB.y) / 2 };
+}
+
+function distanceBetween(pointA, pointB) {
+    return Math.sqrt(Math.pow(pointA.x - pointB.x, 2) + Math.pow(pointA.y - pointB.y, 2));
+}
+
+/*
+ * pA - P1, pB - P2, pC - distance to this point
+ * pA and pB define the line
+ */
+
+function distanceToLine(pA, pB, pC) {
+    // Absolute value is twice the area of a triangle as defined by three coordinates in a
+    // cartesian coordinate system. (http://en.wikipedia.org/wiki/Triangle#Using_coordinates)
+    // The absolute value is then divided by the distance between the two points (pA and pB),
+    // giving the height of the triangle, which is the shortest distance between the line and the point.
+    // Documentation: http://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points
+    return Math.abs((pB.y - pA.y) * pC.x - (pB.x - pA.x) * pC.y + pB.x * pA.y - pB.y * pA.x) / distanceBetween(pA, pB);
+}
+
+function getSlope(pointA, pointB) {
+    // Check for a vertical line, return undefined.
+    return pointA.x === pointB.x ? undefined : (pointA.y - pointB.y) / (pointA.x - pointB.x);
+}
+
+function getYIntercept(pointA, pointB) {
+    return pointA.y - getSlope(pointA, pointB) * pointA.x;
+}
+
+function lineEquation(slope, yIntercept) {
+    return function (x) {
+        return slope * x + yIntercept;
+    };
+}
+
+function getHitPoints(pointA, pointB, center, radius) {
+    var hitPoints = [];
+
+    var m = getSlope(pointA, pointB);
+    var h = center.x; // x coordinate of circle's center
+    var k = center.y; // y coordinate of circle's center
+    var r = radius; // radius of circle's center
+
+    if (m === undefined) {
+        var C = pointA.x;
+
+        hitPoints.push({ x: C, y: +Math.sqrt(r * r - Math.pow(C - h, 2)) + k });
+        hitPoints.push({ x: C, y: -Math.sqrt(r * r - Math.pow(C - h, 2)) + k });
+    } else {
+        var b = getYIntercept(pointA, pointB);
+
+        var A = 1 + m * m;
+        var B = -2 * h + 2 * m * b - 2 * k * m;
+        var C = -(2 * k * b - k * k + r * r - h * h - b * b);
+
+        var discriminant = B * B - 4 * A * C;
+
+        if (discriminant > 0) {
+            (function () {
+                var getY = lineEquation(m, b);
+                var getPoint = function getPoint(x) {
+                    return { x: x, y: getY(x) };
+                };
+
+                hitPoints.push(getPoint((-B - Math.sqrt(discriminant)) / (2 * A)));
+                hitPoints.push(getPoint((-B + Math.sqrt(discriminant)) / (2 * A)));
+            })();
+        }
+    }
+
+    return hitPoints;
+}
+
+function isPointInCircle(point, center, radius) {
+    return distanceBetween(point, center) <= radius;
+}
+
+// Is point C between point A and B, assuming that all points are collinear
+
+function isBetween(pointA, betweenPoint, pointB) {
+    var _isBetween = function _isBetween(pointA, pointB) {
+        // If X coordinates are equal, then the y coordinate needs to be checked to see if it is in between
+        if (pointA.x === pointB.x) {
+            return pointA.y <= betweenPoint.y && betweenPoint.y <= pointB.y;
+        }
+
+        return pointA.x <= betweenPoint.x && betweenPoint.x <= pointB.x;
+    };
+
+    // Checking both pointA and pointB on both sides allows passing them in any order.
+    return _isBetween(pointA, pointB) || _isBetween(pointB, pointA);
+}
+
+function willCollide(originalCenter, bodyDelta, potentialColliders, callback) {
+    var shiftedBodyCenter = {
+        x: originalCenter.x + bodyDelta.x,
+        y: originalCenter.y + bodyDelta.y
+    };
+
+    return potentialColliders.some(function (potentialCollider) {
+        // The line containing the segment is intersecting the circle
+        if (distanceToLine(originalCenter, shiftedBodyCenter, potentialCollider.center) <= potentialCollider.radius) {
+            if (isPointInCircle(originalCenter, potentialCollider.center, potentialCollider.radius) || isPointInCircle(shiftedBodyCenter, potentialCollider.center, potentialCollider.radius)) {
+
+                if (callback) callback(potentialCollider);
+
+                return true;
+            }
+
+            var hitPoints = getHitPoints(originalCenter, shiftedBodyCenter, potentialCollider.center, potentialCollider.radius);
+
+            var result = hitPoints.some(function (hitPoint) {
+                return isBetween(originalCenter, hitPoint, shiftedBodyCenter);
+            });
+
+            if (result && callback) callback(potentialCollider);
+
+            return result;
+        }
+    });
+}
+},{"./canvasDraw":52,"./constants":53}],56:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var timeLeft = undefined;
+var timeOffPage = 0;
+
+document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+        timeLeft = Date.now();
+    } else {
+        timeOffPage += Date.now() - timeLeft;
+    }
+});
+
+exports["default"] = {
+    timeOffPage: timeOffPage,
+    isOnPage: function isOnPage() {
+        return !document.hidden;
+    }
+};
+module.exports = exports["default"];
+},{}]},{},[54]);
+</script>
