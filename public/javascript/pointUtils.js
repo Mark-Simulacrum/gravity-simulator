@@ -82,10 +82,6 @@ export function getHitPoints(pointA, pointB, center, radius) {
         }
     }
 
-    // hitPoints.forEach(point => {
-    //     canvasDraw.drawPoint(point, "red", 5);
-    // });
-
     return hitPoints;
 }
 
@@ -135,3 +131,13 @@ export function willCollide(originalCenter, bodyDelta, potentialColliders, callb
         }
     });
 }
+
+
+
+
+
+
+
+
+
+

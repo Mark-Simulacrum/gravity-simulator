@@ -129,8 +129,16 @@ function Game() {
         }
     });
 
-    Mousetrap.bind("shift+d", () => {
+    Mousetrap.bind("shift+b", () => {
         this.bodies = [];
+    });
+
+    Mousetrap.bind("shift+a", () => {
+        this.attractors = [];
+    });
+
+    Mousetrap.bind("shift+c", () => {
+        this.cannons = [];
     });
 
     let processSpawning = (type) => {
@@ -265,7 +273,7 @@ Game.prototype.draw = function() {
     this.cannons.forEach(canvasDraw.drawBody);
 
     canvasDraw.setColor("black");
-    this.screen.fillText("Bodies: " + this.bodies.length, 1, this.size.y);
+    this.screen.fillText(`Bodies: ${this.bodies.length}  Cannons: ${this.cannons.length} Attractors: ${this.attractors.length}`, 1, this.size.y);
 };
 
 Game.prototype.addBody = function(body) {
