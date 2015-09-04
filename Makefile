@@ -20,4 +20,5 @@ deploy:
 	git push -f -u origin gh-pages
 
 watch-compile:
+	make compile
 	fswatch -o ./public | xargs -n1 -I{} make compile
