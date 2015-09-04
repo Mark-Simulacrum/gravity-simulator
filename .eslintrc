@@ -3,23 +3,20 @@
     "env": {
         "browser": true
     },
-    "globals": {
-        "global": false
-    },
+    "extends": "eslint:recommended",
     "rules": {
-        "esnext": true,
-        "strict": false,
-        "quotes": false,
-        "curly": false,
-        "no-var": true,
-        "no-alert": false,
-        "no-use-before-define": false,
-        "no-underscore-dangle": false,
-        "no-multi-spaces": false,
-        "no-loop-func": false,
-        "no-console": false,
-        "no-shadow": false,
-        "comma-spacing": false,
-        "eol-last": false,
+        "strict": 0,
+        "quotes": 0,
+        "curly": 0,
+        "no-var": 1,
+        "no-alert": 0,
+        "no-use-before-define": 0,
+        "no-underscore-dangle": 0,
+        "no-multi-spaces": 0,
+        "no-loop-func": 0,
+        "no-console": 0,
+        "no-shadow": 0,
+        "comma-spacing": 0,
+        "eol-last": 0,
     }
 }
