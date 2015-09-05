@@ -1,4 +1,3 @@
-import * as canvasDraw from "./canvasDraw";
 import * as constants from "./constants";
 
 export function toReal(point) {

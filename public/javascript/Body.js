@@ -1,5 +1,4 @@
 import Vector from "./Vector.js";
-import presenceTracker from "./presenceTracker";
 import * as constants from "./constants";
 import * as pointUtils from "./pointUtils";
 

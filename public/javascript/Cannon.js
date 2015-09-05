@@ -1,7 +1,6 @@
 import Vector from "./Vector";
 import Body from "./Body";
 import * as canvasDraw from "./canvasDraw";
-import * as pointUtils from "./pointUtils";
 import * as constants from "./constants";
 
 let initNum = 0;
