@@ -77,7 +77,6 @@ function Game() {
 
     let moveObject = (direction) => {
         if (this.selectedObject) {
-            console.log(direction)
             if (direction === "up" || direction === "down") {
                 this.selectedObject.center.y += (direction === "up" ? constants.toReal(-1) : constants.toReal(1));
             } else {
