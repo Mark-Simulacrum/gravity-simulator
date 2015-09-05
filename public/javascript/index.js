@@ -14,16 +14,6 @@ import * as pointUtils from "./pointUtils";
 function Game() {
     this.canvas = document.getElementById("canvas");
 
-    let openButton = document.querySelector("#open-button");
-    let closeButton = document.querySelector("#close-button");
-    let modal = document.querySelector("#directions");
-
-    openButton.addEventListener("click", () => {
-        if (modal.style.display !== "table") modal.style.display = "table";
-        else modal.style.display = "none";
-    });
-    closeButton.addEventListener("click", () => modal.style.display = "none");
-
     this.canvas.style.position = "absolute";
     this.computeSize();
 
@@ -289,5 +279,18 @@ Game.prototype.addBody = function(body) {
     this.bodies.push(body);
 };
 
-window.addEventListener("DOMContentLoaded", () => { window.game = new Game(); });
+window.addEventListener("DOMContentLoaded", () => {
+    window.game = new Game();
+
+    let openButton = document.querySelector("#open-button");
+    let closeButton = document.querySelector("#close-button");
+    let modal = document.querySelector("#directions");
+
+    openButton.addEventListener("click", () => {
+        if (modal.style.display !== "table") modal.style.display = "table";
+        else modal.style.display = "none";
+    });
+    closeButton.addEventListener("click", () => modal.style.display = "none");
+
+});
 window.addEventListener("resize", () => { window.game.computeSize(); });
