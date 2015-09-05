@@ -13,6 +13,7 @@ import * as pointUtils from "./pointUtils";
 
 function Game() {
     this.canvas = document.getElementById("canvas");
+    this.infoElement = document.getElementById("gen-info-text");
 
     this.canvas.style.position = "absolute";
     this.computeSize();
@@ -200,6 +201,10 @@ function Game() {
     requestAnimationFrame(tick);
 }
 
+Game.prototype.setInfoText = function (text) {
+    this.infoElement.innerHTML = text;
+};
+
 Game.prototype.pointInAttractor = function (point) {
     let distanceTo = attractor => Math.ceil(pointUtils.distanceBetween(point, attractor.center));
 
@@ -271,8 +276,11 @@ Game.prototype.draw = function() {
     this.deflectors.forEach(canvasDraw.drawBody);
     this.cannons.forEach(canvasDraw.drawBody);
 
-    canvasDraw.setColor("black");
-    this.screen.fillText(`Bodies: ${this.bodies.length} Cannons: ${this.cannons.length} Attractors: ${this.attractors.length} Deflectors: ${this.deflectors.length}`, 1, this.size.y);
+    this.setInfoText([
+        `Bodies: ${this.bodies.length}`,
+        `Cannons: ${this.cannons.length}`,
+        `Attractors: ${this.attractors.length}`,
+        `Deflectors: ${this.deflectors.length}`].join("<br>"));
 };
 
 Game.prototype.addBody = function(body) {

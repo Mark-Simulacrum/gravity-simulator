@@ -28,6 +28,14 @@
             transform: translateX(-50%);
             background-color: hsl(50, 100%, 50%);
         }
+
+        #gen-info-text {
+            position: absolute;
+            bottom: 0.5em;
+            left: 0.5em;
+            z-index: 100;
+        }
+
         #open-button {
             position: absolute;
             bottom: 1em;
@@ -53,6 +61,7 @@
         <tr><td>d</td><td> create a deflector at the current mouse coordinate</td></tr>
         <tr><td colspan="2" style="text-align: center;"><button id="close-button">Close</button></td></tr>
     </table>
+    <div id="gen-info-text"></div>
     <button id="open-button">Open Keyboard Information</button>
     <canvas id="canvas"></canvas>
 </body>
