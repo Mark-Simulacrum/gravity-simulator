@@ -8,6 +8,7 @@ import pick from "lodash.pick";
 import presenceTracker from "./presenceTracker";
 
 import Attractor from "./Attractor";
+import Deflector from "./Deflector";
 import Cannon from "./Cannon";
 import Body from "./Body";
 
@@ -40,6 +41,7 @@ function Game() {
     this.deadBodies = [];
     this.bodies = [];
     this.attractors = [];
+    this.deflectors = [];
     this.cannons = [];
 
     this.attractors.push(new Attractor(this, {
@@ -69,8 +71,9 @@ function Game() {
         this.cannons.push(new Cannon(this, point, toPoint));
     };
 
+    let getClickableObjects = () => this.attractors.concat(this.cannons, this.deflectors);
     let getClickedObject = point => {
-        return find(this.attractors.concat(this.cannons), object => {
+        return find(getClickableObjects(), object => {
             let distance = pointUtils.distanceBetween(object.center, point);
 
             // User clicked within a 50px circle or the object's radius around the center of the object
@@ -84,7 +87,7 @@ function Game() {
     let mousePos;
 
     let adjustObject = (object, adjustment) => {
-        if (object.type === "attractor") {
+        if (object.type === "attractor" || object.type === "deflector") {
             if (selectedObject.radius > constants.toReal(1)) {
                 selectedObject.radius += constants.toReal(adjustment);
                 selectedObject.calculateMass();
@@ -105,7 +108,7 @@ function Game() {
         }
     });
 
-    Mousetrap.bind("d", () => {
+    Mousetrap.bind("k", () => {
         if (mousePos && selectedObject) {
             selectedObject.isAlive = false;
         }
@@ -137,6 +140,10 @@ function Game() {
         this.attractors = [];
     });
 
+    Mousetrap.bind("shift+d", () => {
+        this.deflectors = [];
+    });
+
     Mousetrap.bind("shift+c", () => {
         this.cannons = [];
     });
@@ -145,6 +152,8 @@ function Game() {
         if (mousePos) {
             if (type === "attractor") {
                 this.attractors.push(new Attractor(this, mousePos));
+            } else if (type === "deflector") {
+                this.deflectors.push(new Deflector(this, mousePos));
             } else if (type === "cannon") {
                 spawnCannon(mousePos);
             } else if (type === "body") {
@@ -153,11 +162,14 @@ function Game() {
         }
     };
 
-    processSpawning = throttle(processSpawning, 100, { leading: true, trailing: false });
+    processSpawning = throttle(processSpawning, 50, { leading: true, trailing: false });
 
     Mousetrap.bind("a", () => {
-        console.log("attractor: a");
         processSpawning("attractor");
+    });
+
+    Mousetrap.bind("d", () => {
+        processSpawning("deflector");
     });
 
     Mousetrap.bind("c", () => {
@@ -175,7 +187,7 @@ function Game() {
 
         let clickedObject = getClickedObject(point);
 
-        this.attractors.concat(this.cannons).forEach(object => object.selected = false);
+        getClickableObjects().forEach(object => object.selected = false);
         if (clickedObject) {
             clickedObject.selected = true;
         }
@@ -253,6 +265,9 @@ Game.prototype.update = function() {
     this.attractors.forEach(attractor => attractor.update());
     this.attractors = this.attractors.filter(attractor => attractor.isAlive);
 
+    this.deflectors.forEach(deflector => deflector.update());
+    this.deflectors = this.deflectors.filter(attractor => attractor.isAlive);
+
     this.bodies.forEach(body => body.update(timeSinceUpdate)); // Update must run before cleanup of dead bodies
     this.bodies = this.bodies.filter(body => body.isAlive);
 
@@ -261,24 +276,20 @@ Game.prototype.update = function() {
 };
 
 Game.prototype.draw = function() {
-    this.deadBodies.forEach(deadBody => {
-        canvasDraw.drawBody(deadBody);
-    });
-
     this.bodies
-        // .filter(body => body.isManual)
         .forEach(canvasDraw.drawBody);
 
     this.attractors.forEach(canvasDraw.drawBody);
+    this.deflectors.forEach(canvasDraw.drawBody);
     this.cannons.forEach(canvasDraw.drawBody);
 
     canvasDraw.setColor("black");
-    this.screen.fillText(`Bodies: ${this.bodies.length}  Cannons: ${this.cannons.length} Attractors: ${this.attractors.length}`, 1, this.size.y);
+    this.screen.fillText(`Bodies: ${this.bodies.length} Cannons: ${this.cannons.length} Attractors: ${this.attractors.length} Deflectors: ${this.deflectors.length}`, 1, this.size.y);
 };
 
 Game.prototype.addBody = function(body) {
     this.bodies.push(body);
 };
 
-window.addEventListener("DOMContentLoaded", () => { global.game = new Game(); });
-window.addEventListener("resize", () => { global.game.computeSize(); });
+window.addEventListener("DOMContentLoaded", () => { window.game = new Game(); });
+window.addEventListener("resize", () => { window.game.computeSize(); });

@@ -48,17 +48,23 @@ export default class Body {
     update(timeSinceUpdate) {
         this.timeSinceUpdate = timeSinceUpdate;
 
-        let vectors = this.game.attractors.map(attractor => {
-            let force = constants.G * this.mass * attractor.mass / Math.pow(pointUtils.distanceBetween(this.center, attractor.center), 2);
+        let vectors = this.game.attractors.concat(this.game.deflectors).map(object => {
+            let force = constants.G * this.mass * object.mass / Math.pow(pointUtils.distanceBetween(this.center, object.center), 2);
 
-            return new Vector(
+            let vector = new Vector(
                 force,
                 Math.atan2(
-                    this.center.y - attractor.center.y,
-                    this.center.x - attractor.center.x
+                    this.center.y - object.center.y,
+                    this.center.x - object.center.x
                 ) + Math.PI,
                 "N"
             );
+
+            if (object.type === "deflector") {
+                vector = vector.opposite();
+            }
+
+            return vector;
         });
 
         let planetsVector = vectors.length > 0 ? vectors.reduce((vecA, vecB) => vecA.add(vecB)) : new Vector(0, 0, "N");
@@ -88,7 +94,7 @@ export default class Body {
         let hue = Math.min(currentAcceleration / max, 1) * (max - min) + min;
         this.color = `hsl(${hue}, 100%, 70%)`;
 
-        this.isAlive = !pointUtils.willCollide(this.center, delta, this.game.attractors);
+        this.isAlive = !pointUtils.willCollide(this.center, delta, this.game.attractors.concat(this.game.deflectors));
 
         this.center.x += delta.x;
         this.center.y += delta.y;
