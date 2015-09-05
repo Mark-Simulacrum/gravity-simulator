@@ -1,11 +1,6 @@
-import {EventEmitter} from "events";
 import Mousetrap from "mousetrap";
 import throttle from "lodash.throttle";
 import find from "lodash.find";
-import uniq from "lodash.uniq";
-import pick from "lodash.pick";
-
-import presenceTracker from "./presenceTracker";
 
 import Attractor from "./Attractor";
 import Deflector from "./Deflector";
@@ -47,12 +42,15 @@ function Game() {
     this.attractors.push(new Attractor(this, {
         x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4) // left left top
     }));
+
     this.attractors.push(new Attractor(this, {
         x: constants.toReal(this.size.x / 4 * 3) , y: constants.toReal(this.size.y / 4) // left right top
     }));
+
     this.attractors.push(new Attractor(this, {
         x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4 * 3) // left left bottom
     }));
+
     this.attractors.push(new Attractor(this, {
         x: constants.toReal(this.size.x / 4 * 3), y: constants.toReal(this.size.y / 4 * 3) // right right bottom
     }));

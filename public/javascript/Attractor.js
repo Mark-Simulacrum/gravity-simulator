@@ -1,7 +1,7 @@
 import * as constants from "./constants";
 
 let initNum = 1;
-export default class Attractor{
+export default class Attractor {
     constructor(game, center) {
         this.type = "attractor";
         this.id = initNum;
@@ -12,6 +12,7 @@ export default class Attractor{
         this.mass = constants.EarthMass * 4;
 
         this.radius = this.mass / constants.EarthMass * constants.EarthRadius;
+        this.color = `#54d100`;
 
         initNum++;
     }
@@ -19,6 +20,5 @@ export default class Attractor{
         this.mass = this.radius / constants.EarthRadius * constants.EarthMass;
     }
     update() {
-        this.color = `hsl(${360 / this.game.attractors.length * this.id}, 100%, 50%)`;
     }
 }
