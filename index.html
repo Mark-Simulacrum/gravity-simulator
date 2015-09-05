@@ -28,6 +28,14 @@
             transform: translateX(-50%);
             background-color: hsl(50, 100%, 50%);
         }
+
+        #gen-info-text {
+            position: absolute;
+            bottom: 0.5em;
+            left: 0.5em;
+            z-index: 100;
+        }
+
         #open-button {
             position: absolute;
             bottom: 1em;
@@ -53,6 +61,7 @@
         <tr><td>d</td><td> create a deflector at the current mouse coordinate</td></tr>
         <tr><td colspan="2" style="text-align: center;"><button id="close-button">Close</button></td></tr>
     </table>
+    <div id="gen-info-text"></div>
     <button id="open-button">Open Keyboard Information</button>
     <canvas id="canvas"></canvas>
 </body>
@@ -4080,17 +4089,7 @@ function Game() {
     var _this = this;
 
     this.canvas = document.getElementById("canvas");
-
-    var openButton = document.querySelector("#open-button");
-    var closeButton = document.querySelector("#close-button");
-    var modal = document.querySelector("#directions");
-
-    openButton.addEventListener("click", function () {
-        if (modal.style.display !== "table") modal.style.display = "table";else modal.style.display = "none";
-    });
-    closeButton.addEventListener("click", function () {
-        return modal.style.display = "none";
-    });
+    this.infoElement = document.getElementById("gen-info-text");
 
     this.canvas.style.position = "absolute";
     this.computeSize();
@@ -4289,6 +4288,10 @@ function Game() {
     requestAnimationFrame(tick);
 }
 
+Game.prototype.setInfoText = function (text) {
+    this.infoElement.innerHTML = text;
+};
+
 Game.prototype.pointInAttractor = function (point) {
     var distanceTo = function distanceTo(attractor) {
         return Math.ceil(pointUtils.distanceBetween(point, attractor.center));
@@ -4381,8 +4384,7 @@ Game.prototype.draw = function () {
     this.deflectors.forEach(canvasDraw.drawBody);
     this.cannons.forEach(canvasDraw.drawBody);
 
-    canvasDraw.setColor("black");
-    this.screen.fillText("Bodies: " + this.bodies.length + " Cannons: " + this.cannons.length + " Attractors: " + this.attractors.length + " Deflectors: " + this.deflectors.length, 1, this.size.y);
+    this.setInfoText(["Bodies: " + this.bodies.length, "Cannons: " + this.cannons.length, "Attractors: " + this.attractors.length, "Deflectors: " + this.deflectors.length].join("<br>"));
 };
 
 Game.prototype.addBody = function (body) {
@@ -4391,6 +4393,17 @@ Game.prototype.addBody = function (body) {
 
 window.addEventListener("DOMContentLoaded", function () {
     window.game = new Game();
+
+    var openButton = document.querySelector("#open-button");
+    var closeButton = document.querySelector("#close-button");
+    var modal = document.querySelector("#directions");
+
+    openButton.addEventListener("click", function () {
+        if (modal.style.display !== "table") modal.style.display = "table";else modal.style.display = "none";
+    });
+    closeButton.addEventListener("click", function () {
+        return modal.style.display = "none";
+    });
 });
 window.addEventListener("resize", function () {
     window.game.computeSize();
