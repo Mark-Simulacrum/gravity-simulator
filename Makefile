@@ -14,8 +14,7 @@ deploy:
 	npm install
 	make compile
 	cp out/index.html ./index.html
-	rm -r out
-	rm -r public node_modules .eslintrc .gitignore LICENSE Makefile package.json out
+	rm -fr public node_modules .eslintrc .gitignore LICENSE Makefile package.json out
 	git commit -a -m "Deploying new gh-pages [skip ci]"
 	git push -f -u origin gh-pages
 
