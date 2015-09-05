@@ -4105,22 +4105,7 @@ function Game() {
     this.attractors = [];
     this.deflectors = [];
     this.cannons = [];
-
-    this.attractors.push(new _Attractor2["default"](this, {
-        x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4) // left left top
-    }));
-
-    this.attractors.push(new _Attractor2["default"](this, {
-        x: constants.toReal(this.size.x / 4 * 3), y: constants.toReal(this.size.y / 4) // left right top
-    }));
-
-    this.attractors.push(new _Attractor2["default"](this, {
-        x: constants.toReal(this.size.x / 4), y: constants.toReal(this.size.y / 4 * 3) // left left bottom
-    }));
-
-    this.attractors.push(new _Attractor2["default"](this, {
-        x: constants.toReal(this.size.x / 4 * 3), y: constants.toReal(this.size.y / 4 * 3) // right right bottom
-    }));
+    this.selectedObject = null;
 
     var spawnBody = function spawnBody(point) {
         var isManual = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
@@ -4152,53 +4137,76 @@ function Game() {
         });
     };
 
-    var selectedObject = undefined;
     var mousePos = undefined;
 
     var adjustObject = function adjustObject(object, adjustment) {
         if (object.type === "attractor" || object.type === "deflector") {
-            if (selectedObject.radius > constants.toReal(1)) {
-                selectedObject.radius += constants.toReal(adjustment);
-                selectedObject.calculateMass();
+            if (_this.selectedObject.radius > constants.toReal(1)) {
+                _this.selectedObject.radius += constants.toReal(adjustment);
+                _this.selectedObject.calculateMass();
             }
         } else if (object.type === "cannon") {
             adjustment = -adjustment;
-            if (selectedObject.rate > 1) {
-                selectedObject.rate += adjustment; // The + should make the rate faster, - slower
-            } else if (selectedObject.rate === 1 && adjustment > 0) {
-                    selectedObject.rate += adjustment;
+            if (_this.selectedObject.rate > 1) {
+                _this.selectedObject.rate += adjustment; // The + should make the rate faster, - slower
+            } else if (_this.selectedObject.rate === 1 && adjustment > 0) {
+                    _this.selectedObject.rate += adjustment;
                 }
         }
     };
 
+    var moveObject = function moveObject(direction) {
+        if (_this.selectedObject) {
+            console.log(direction);
+            if (direction === "up" || direction === "down") {
+                _this.selectedObject.center.y += direction === "up" ? constants.toReal(-1) : constants.toReal(1);
+            } else {
+                _this.selectedObject.center.x += direction === "right" ? constants.toReal(1) : constants.toReal(-1);
+            }
+        }
+    };
+
+    _mousetrap2["default"].bind("up", function () {
+        return moveObject("up");
+    });
+    _mousetrap2["default"].bind("down", function () {
+        return moveObject("down");
+    });
+    _mousetrap2["default"].bind("left", function () {
+        return moveObject("left");
+    });
+    _mousetrap2["default"].bind("right", function () {
+        return moveObject("right");
+    });
+
     _mousetrap2["default"].bind("m", function () {
-        if (mousePos && selectedObject) {
-            selectedObject.center = mousePos;
+        if (mousePos && _this.selectedObject) {
+            _this.selectedObject.center = mousePos;
         }
     });
 
     _mousetrap2["default"].bind("k", function () {
-        if (mousePos && selectedObject) {
-            selectedObject.isAlive = false;
+        if (mousePos && _this.selectedObject) {
+            _this.selectedObject.isAlive = false;
         }
     });
 
     _mousetrap2["default"].bind("+", function () {
-        if (mousePos && selectedObject) {
-            adjustObject(selectedObject, +1);
+        if (mousePos && _this.selectedObject) {
+            adjustObject(_this.selectedObject, +1);
         }
     });
 
     _mousetrap2["default"].bind("-", function () {
-        if (mousePos && selectedObject) {
-            adjustObject(selectedObject, -1);
+        if (mousePos && _this.selectedObject) {
+            adjustObject(_this.selectedObject, -1);
         }
     });
 
     _mousetrap2["default"].bind("t", function () {
-        if (mousePos && selectedObject && selectedObject.type === "cannon") {
+        if (mousePos && _this.selectedObject && _this.selectedObject.type === "cannon") {
             // Selected object is a cannon
-            selectedObject.select(mousePos);
+            _this.selectedObject.select(mousePos);
         }
     });
 
@@ -4266,7 +4274,7 @@ function Game() {
             clickedObject.selected = true;
         }
 
-        selectedObject = clickedObject;
+        _this.selectedObject = clickedObject;
     });
 
     this.canvas.addEventListener("mousemove", function (e) {
@@ -4375,6 +4383,14 @@ Game.prototype.update = function () {
     this.cannons = this.cannons.filter(function (cannon) {
         return cannon.isAlive;
     });
+
+    var infoArr = ["Bodies: " + this.bodies.length, "Cannons: " + this.cannons.length, "Attractors: " + this.attractors.length, "Deflectors: " + this.deflectors.length];
+
+    if (this.selectedObject) {
+        infoArr.unshift("centerX: " + constants.fromReal(this.selectedObject.center.x) + ", Y: " + constants.fromReal(this.selectedObject.center.y));
+    }
+
+    this.setInfoText(infoArr.join("<br>"));
 };
 
 Game.prototype.draw = function () {
@@ -4383,8 +4399,6 @@ Game.prototype.draw = function () {
     this.attractors.forEach(canvasDraw.drawBody);
     this.deflectors.forEach(canvasDraw.drawBody);
     this.cannons.forEach(canvasDraw.drawBody);
-
-    this.setInfoText(["Bodies: " + this.bodies.length, "Cannons: " + this.cannons.length, "Attractors: " + this.attractors.length, "Deflectors: " + this.deflectors.length].join("<br>"));
 };
 
 Game.prototype.addBody = function (body) {
