@@ -3522,10 +3522,6 @@ var _VectorJs = require("./Vector.js");
 
 var _VectorJs2 = _interopRequireDefault(_VectorJs);
 
-var _presenceTracker = require("./presenceTracker");
-
-var _presenceTracker2 = _interopRequireDefault(_presenceTracker);
-
 var _constants = require("./constants");
 
 var constants = _interopRequireWildcard(_constants);
@@ -3639,7 +3635,7 @@ var Body = (function () {
 
 exports["default"] = Body;
 module.exports = exports["default"];
-},{"./Vector.js":22,"./constants":24,"./pointUtils":26,"./presenceTracker":27}],20:[function(require,module,exports){
+},{"./Vector.js":22,"./constants":24,"./pointUtils":26}],20:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -3665,10 +3661,6 @@ var _Body2 = _interopRequireDefault(_Body);
 var _canvasDraw = require("./canvasDraw");
 
 var canvasDraw = _interopRequireWildcard(_canvasDraw);
-
-var _pointUtils = require("./pointUtils");
-
-var pointUtils = _interopRequireWildcard(_pointUtils);
 
 var _constants = require("./constants");
 
@@ -3745,7 +3737,7 @@ var Cannon = (function () {
 
 exports["default"] = Cannon;
 module.exports = exports["default"];
-},{"./Body":19,"./Vector":22,"./canvasDraw":23,"./constants":24,"./pointUtils":26}],21:[function(require,module,exports){
+},{"./Body":19,"./Vector":22,"./canvasDraw":23,"./constants":24}],21:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -4424,10 +4416,6 @@ exports.willCollide = willCollide;
 
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj["default"] = obj; return newObj; } }
 
-var _canvasDraw = require("./canvasDraw");
-
-var canvasDraw = _interopRequireWildcard(_canvasDraw);
-
 var _constants = require("./constants");
 
 var constants = _interopRequireWildcard(_constants);
@@ -4563,29 +4551,5 @@ function willCollide(originalCenter, bodyDelta, potentialColliders, callback) {
         }
     });
 }
-},{"./canvasDraw":23,"./constants":24}],27:[function(require,module,exports){
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-var timeLeft = undefined;
-var timeOffPage = 0;
-
-document.addEventListener("visibilitychange", function () {
-    if (document.hidden) {
-        timeLeft = Date.now();
-    } else {
-        timeOffPage += Date.now() - timeLeft;
-    }
-});
-
-exports["default"] = {
-    timeOffPage: timeOffPage,
-    isOnPage: function isOnPage() {
-        return !document.hidden;
-    }
-};
-module.exports = exports["default"];
-},{}]},{},[25]);
+},{"./constants":24}]},{},[25]);
 </script>
