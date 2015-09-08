@@ -36,6 +36,13 @@
             z-index: 100;
         }
 
+        #measurement-selector {
+            position: absolute;
+            bottom: 3em;
+            right: 1em;
+            z-index: 100;
+        }
+
         #open-button {
             position: absolute;
             bottom: 1em;
@@ -65,6 +72,11 @@
         <tr><td>down arrow key</td><td> moves selected object down</td></tr>
         <tr><td colspan="2" style="text-align: center;"><button id="close-button">Close</button></td></tr>
     </table>
+    <select id="measurement-selector">
+        <option id="miles">Miles</option>
+        <option id="kilometers">Kilometers</option>
+        <option selected id="earth-radii">Earth-radii</option>
+    </select>
     <div id="gen-info-text"></div>
     <button id="open-button">Open Keyboard Information</button>
     <canvas id="canvas"></canvas>
