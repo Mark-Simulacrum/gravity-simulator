@@ -273,7 +273,8 @@ Game.prototype.update = function() {
         `Deflectors: ${this.deflectors.length}`];
 
     if (this.selectedObject) {
-        infoArr.unshift(`centerX: ${constants.fromReal(this.selectedObject.center.x)}, Y: ${constants.fromReal(this.selectedObject.center.y)}`);
+        infoArr.unshift(`Mass: ${(this.selectedObject.mass/constants.EarthMass).toFixed(2)} Earth masses`);
+        infoArr.unshift(`Center: (${constants.fromReal(this.selectedObject.center.x)}px, ${constants.fromReal(this.selectedObject.center.y)}px)`);
     }
 
     this.setInfoText(infoArr.join("<br>"));
