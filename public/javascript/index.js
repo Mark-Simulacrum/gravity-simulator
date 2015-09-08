@@ -63,8 +63,10 @@ function Game() {
         if (object.type === "attractor" || object.type === "deflector") {
             if (this.selectedObject.radius > constants.toReal(1)) {
                 this.selectedObject.radius += constants.toReal(adjustment);
-                this.selectedObject.calculateMass();
+            } else if (constants.toReal(adjustment) > 0) {
+                this.selectedObject.radius += constants.toReal(adjustment);
             }
+            this.selectedObject.calculateMass();
         } else if (object.type === "cannon") {
             adjustment = -adjustment;
             if (this.selectedObject.rate > 1) {
