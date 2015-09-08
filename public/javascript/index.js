@@ -275,7 +275,17 @@ Game.prototype.update = function() {
         `Deflectors: ${this.deflectors.length}`];
 
     if (this.selectedObject) {
-        infoArr.unshift(`Mass: ${(this.selectedObject.mass/constants.EarthMass).toFixed(2)} Earth masses`);
+
+        const scientificNotation = this.selectedObject.mass.toExponential();
+        const scientificNotationRe = /(\d)\.?(\d{0,3})?(\d*?)e\+(\d+)/;
+        console.log(
+            scientificNotationRe.exec(scientificNotation),
+            scientificNotation,
+            scientificNotationRe.test(scientificNotation));
+        const [, base, decimals, { length: numOfExtra }, power ] = scientificNotationRe.exec(scientificNotation);
+        const modifiedNotation = `${base}${decimals ? `.${decimals}` : ""} &times; 10 ^ ${power - numOfExtra}`;
+
+        infoArr.unshift(`Mass: ${(this.selectedObject.mass/constants.EarthMass).toFixed(2)} Earth masses or ${modifiedNotation} kg`);
         infoArr.unshift(`Center: (${constants.fromReal(this.selectedObject.center.x)}px, ${constants.fromReal(this.selectedObject.center.y)}px)`);
     }
 
