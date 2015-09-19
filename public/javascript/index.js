@@ -24,6 +24,7 @@ function Game() {
 
     canvasDraw.setScreen(this.screen);
 
+    this.timesSinceUpdate = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     this.deadBodies = [];
     this.bodies = [];
     this.attractors = [];
@@ -191,14 +192,14 @@ function Game() {
         mousePos = point;
     });
 
-    let tick = () => {
+    let tick = (highresnow) => {
         this.screen.clearRect(0, 0, this.size.x, this.size.y); //allows this.update() to draw vectors
-        this.update();
+        this.update(highresnow);
         this.draw();
         requestAnimationFrame(tick);
     };
 
-    this.updatedAt = Date.now();
+    this.updatedAt = 0;
     requestAnimationFrame(tick);
 }
 
@@ -250,38 +251,37 @@ Game.prototype.cannonNearPoint = function (point) {
     return returnVal;
 };
 
-Game.prototype.update = function() {
-    const now = Date.now();
+Game.prototype.update = function(now) {
     let timeSinceUpdate = (now - this.updatedAt) * constants.TimeScale;
-    timeSinceUpdate = Math.min(500, timeSinceUpdate);
+
+    this.timesSinceUpdate.shift();
+    this.timesSinceUpdate.push(timeSinceUpdate);
+
+    timeSinceUpdate = Math.min(timeSinceUpdate, 20 * constants.TimeScale);
     this.updatedAt = now;
 
-    this.attractors.forEach(attractor => attractor.update());
+    const gravitationalBodies = this.attractors.concat(this.deflectors);
+
+    for (let deflector of (this.deflectors: Array)) deflector.update(timeSinceUpdate);
+    for (let cannon of (this.cannons: Array)) cannon.update(timeSinceUpdate);
+    for (let body of (this.bodies: Array)) body.update(timeSinceUpdate, gravitationalBodies);
+
     this.attractors = this.attractors.filter(attractor => attractor.isAlive);
-
-    this.deflectors.forEach(deflector => deflector.update());
     this.deflectors = this.deflectors.filter(attractor => attractor.isAlive);
-
-    this.bodies.forEach(body => body.update(timeSinceUpdate)); // Update must run before cleanup of dead bodies
     this.bodies = this.bodies.filter(body => body.isAlive);
-
-    this.cannons.forEach(cannon => cannon.update());
     this.cannons = this.cannons.filter(cannon => cannon.isAlive);
 
     let infoArr = [
         `Bodies: ${this.bodies.length}`,
         `Cannons: ${this.cannons.length}`,
         `Attractors: ${this.attractors.length}`,
-        `Deflectors: ${this.deflectors.length}`];
+        `Deflectors: ${this.deflectors.length}`,
+        `Avg time since last update: ${(this.timesSinceUpdate.reduce((a, b) => a + b, 0) / this.timesSinceUpdate.length / constants.TimeScale).toFixed(2)}ms`
+    ];
 
     if (this.selectedObject) {
-
         const scientificNotation = this.selectedObject.mass.toExponential();
         const scientificNotationRe = /(\d)\.?(\d{0,3})?(\d*?)e\+(\d+)/;
-        console.log(
-            scientificNotationRe.exec(scientificNotation),
-            scientificNotation,
-            scientificNotationRe.test(scientificNotation));
         const [, base, decimals, { length: numOfExtra }, power ] = scientificNotationRe.exec(scientificNotation);
         const modifiedNotation = `${base}${decimals ? `.${decimals}` : ""} &times; 10 ^ ${power - numOfExtra}`;
 
@@ -293,12 +293,8 @@ Game.prototype.update = function() {
 };
 
 Game.prototype.draw = function() {
-    this.bodies
-        .forEach(canvasDraw.drawBody);
-
-    this.attractors.forEach(canvasDraw.drawBody);
-    this.deflectors.forEach(canvasDraw.drawBody);
-    this.cannons.forEach(canvasDraw.drawBody);
+    for (let object of (this.bodies.concat(this.attractors, this.deflectors, this.cannons): Array))
+        canvasDraw.drawBody(object);
 };
 
 Game.prototype.addBody = function(body) {
