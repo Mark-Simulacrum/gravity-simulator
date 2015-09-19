@@ -19,6 +19,5 @@ export default class Attractor {
     calculateMass() {
         this.mass = this.radius / constants.EarthRadius * constants.EarthMass;
     }
-    update() {
-    }
+    update() {}
 }

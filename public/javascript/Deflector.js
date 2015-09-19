@@ -23,7 +23,4 @@ export default class Deflector extends Attractor {
     calculateMass() {
         this.mass = this.radius / constants.EarthRadius * constants.EarthMass;
     }
-    update() {
-        
-    }
 }
