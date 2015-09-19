@@ -1,11 +1,11 @@
 compile:
-	./node_modules/.bin/babel public --out-dir out --copy-files
+	./node_modules/.bin/babel --optional optimisation.flow.forOf public --out-dir out --copy-files
 	./node_modules/.bin/browserify out/javascript/index.js -o out/bundle.js
 	echo '<script>' >> out/index.html
 	cat out/bundle.js >> out/index.html
 	echo '</script>' >> out/index.html
-	-rm -r out/javascript
-	-rm -r out/bundle.js
+	# -rm -r out/javascript
+	# -rm -r out/bundle.js
 
 deploy:
 	git pull
