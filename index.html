@@ -3819,9 +3819,6 @@ var Deflector = (function (_Attractor) {
         value: function calculateMass() {
             this.mass = this.radius / constants.EarthRadius * constants.EarthMass;
         }
-    }, {
-        key: "update",
-        value: function update() {}
     }]);
 
     return Deflector;
@@ -3960,13 +3957,7 @@ function drawBody(body) {
     var radius = (0, _constants.fromReal)(body.radius);
     if (radius < 1) radius = 1;
 
-    if (isPointOutOfBounds(center)) return;
-
-    screen.beginPath();
-    screen.fillStyle = body.color;
-    screen.moveTo(center.x, center.y);
-    screen.arc(center.x, center.y, radius, 0, 2 * Math.PI, false);
-    screen.fill();
+    drawPoint(body.center, body.color, radius);
 
     if (body.selected) {
         var distance = 10;
@@ -3981,7 +3972,13 @@ function drawBody(body) {
         radius -= distance;
     }
 
-    drawPoint((0, _pointUtils.toReal)(center), undefined, Math.min(radius * 0.1, 4));
+    if (body.type === "cannon") {
+        drawLine(body.center, body.vectorToPoint);
+    }
+
+    if (body.type !== "body") {
+        drawPoint(body.center, "black", Math.min(radius * 0.1, 4));
+    }
 }
 
 function drawPoint(point) {
@@ -4030,7 +4027,7 @@ function drawLineF(func, color, size, loopAll) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
-	value: true
+    value: true
 });
 exports.toDisplayUnit = toDisplayUnit;
 exports.getDisplayUnit = getDisplayUnit;
@@ -4061,21 +4058,21 @@ var options = [MilesPerPixel, KilometersPerPixel, EarthRadiiPerPixel];
 var textOptions = ["mi", "km", "earth-radii"];
 
 function toDisplayUnit(pixels) {
-	var selectedIndex = selector.selectedIndex;
+    var selectedIndex = selector.selectedIndex;
 
-	return pixels * options[selectedIndex];
+    return pixels * options[selectedIndex];
 }
 
 function getDisplayUnit() {
-	return textOptions[selector.selectedIndex];
+    return textOptions[selector.selectedIndex];
 }
 
 function toReal(pixels) {
-	return pixels * MetersPerPixel;
+    return pixels * MetersPerPixel;
 }
 
 function fromReal(meters) {
-	return meters / MetersPerPixel;
+    return meters / MetersPerPixel;
 }
 },{}],25:[function(require,module,exports){
 "use strict";
@@ -4136,11 +4133,12 @@ function Game() {
     this.computeSize();
 
     // Get the drawing context.
-    this.screen = this.canvas.getContext('2d');
+    this.screen = this.canvas.getContext("2d");
     this.screen.font = "10pt Arial";
 
     canvasDraw.setScreen(this.screen);
 
+    this.timesSinceUpdate = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     this.deadBodies = [];
     this.bodies = [];
     this.attractors = [];
@@ -4327,14 +4325,14 @@ function Game() {
         mousePos = point;
     });
 
-    var tick = function tick() {
+    var tick = function tick(highresnow) {
         _this.screen.clearRect(0, 0, _this.size.x, _this.size.y); //allows this.update() to draw vectors
-        _this.update();
+        _this.update(highresnow);
         _this.draw();
         requestAnimationFrame(tick);
     };
 
-    this.updatedAt = Date.now();
+    this.updatedAt = 0;
     requestAnimationFrame(tick);
 }
 
@@ -4392,47 +4390,46 @@ Game.prototype.cannonNearPoint = function (point) {
     return returnVal;
 };
 
-Game.prototype.update = function () {
-    var now = Date.now();
+Game.prototype.update = function (now) {
     var timeSinceUpdate = (now - this.updatedAt) * constants.TimeScale;
-    timeSinceUpdate = Math.min(500, timeSinceUpdate);
+
+    this.timesSinceUpdate.shift();
+    this.timesSinceUpdate.push(timeSinceUpdate);
+
+    timeSinceUpdate = Math.min(timeSinceUpdate, 20 * constants.TimeScale);
     this.updatedAt = now;
 
-    this.attractors.forEach(function (attractor) {
-        return attractor.update();
-    });
-    this.attractors = this.attractors.filter(function (attractor) {
-        return attractor.isAlive;
-    });
+    var gravitationalBodies = this.attractors.concat(this.deflectors);
 
-    this.deflectors.forEach(function (deflector) {
-        return deflector.update();
+    var _arr = this.deflectors;
+    for (var _i = 0; _i < _arr.length; _i++) {
+        var deflector = _arr[_i];deflector.update(timeSinceUpdate);
+    }var _arr2 = this.cannons;
+    for (var _i2 = 0; _i2 < _arr2.length; _i2++) {
+        var cannon = _arr2[_i2];cannon.update(timeSinceUpdate);
+    }var _arr3 = this.bodies;
+    for (var _i3 = 0; _i3 < _arr3.length; _i3++) {
+        var body = _arr3[_i3];body.update(timeSinceUpdate, gravitationalBodies);
+    }this.attractors = this.attractors.filter(function (attractor) {
+        return attractor.isAlive;
     });
     this.deflectors = this.deflectors.filter(function (attractor) {
         return attractor.isAlive;
     });
-
-    this.bodies.forEach(function (body) {
-        return body.update(timeSinceUpdate);
-    }); // Update must run before cleanup of dead bodies
     this.bodies = this.bodies.filter(function (body) {
         return body.isAlive;
-    });
-
-    this.cannons.forEach(function (cannon) {
-        return cannon.update();
     });
     this.cannons = this.cannons.filter(function (cannon) {
         return cannon.isAlive;
     });
 
-    var infoArr = ["Bodies: " + this.bodies.length, "Cannons: " + this.cannons.length, "Attractors: " + this.attractors.length, "Deflectors: " + this.deflectors.length];
+    var infoArr = ["Bodies: " + this.bodies.length, "Cannons: " + this.cannons.length, "Attractors: " + this.attractors.length, "Deflectors: " + this.deflectors.length, "Avg time since last update: " + (this.timesSinceUpdate.reduce(function (a, b) {
+        return a + b;
+    }, 0) / this.timesSinceUpdate.length / constants.TimeScale).toFixed(2) + "ms"];
 
     if (this.selectedObject) {
-
         var scientificNotation = this.selectedObject.mass.toExponential();
         var scientificNotationRe = /(\d)\.?(\d{0,3})?(\d*?)e\+(\d+)/;
-        console.log(scientificNotationRe.exec(scientificNotation), scientificNotation, scientificNotationRe.test(scientificNotation));
 
         var _scientificNotationRe$exec = scientificNotationRe.exec(scientificNotation);
 
@@ -4453,11 +4450,12 @@ Game.prototype.update = function () {
 };
 
 Game.prototype.draw = function () {
-    this.bodies.forEach(canvasDraw.drawBody);
+    var _arr4 = this.bodies.concat(this.attractors, this.deflectors, this.cannons);
 
-    this.attractors.forEach(canvasDraw.drawBody);
-    this.deflectors.forEach(canvasDraw.drawBody);
-    this.cannons.forEach(canvasDraw.drawBody);
+    for (var _i4 = 0; _i4 < _arr4.length; _i4++) {
+        var object = _arr4[_i4];
+        canvasDraw.drawBody(object);
+    }
 };
 
 Game.prototype.addBody = function (body) {
@@ -4518,7 +4516,11 @@ function midpoint(pointA, pointB) {
     return { x: (pointA.x + pointB.x) / 2, y: (pointA.y + pointB.y) / 2 };
 }
 
-function distanceBetween(pointA, pointB) {
+var zeroPoint = { x: 0, y: 0 };
+
+function distanceBetween(pointA) {
+    var pointB = arguments.length <= 1 || arguments[1] === undefined ? zeroPoint : arguments[1];
+
     return Math.sqrt(Math.pow(pointA.x - pointB.x, 2) + Math.pow(pointA.y - pointB.y, 2));
 }
 
