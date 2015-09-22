@@ -12,7 +12,8 @@ export function midpoint(pointA, pointB) {
     return { x: (pointA.x + pointB.x) / 2, y: (pointA.y + pointB.y) / 2 };
 }
 
-export function distanceBetween(pointA, pointB) {
+const zeroPoint = { x: 0, y: 0 };
+export function distanceBetween(pointA, pointB = zeroPoint) {
     return Math.sqrt(
             Math.pow(pointA.x - pointB.x, 2) +
             Math.pow(pointA.y - pointB.y, 2)

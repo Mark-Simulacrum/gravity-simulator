@@ -1,5 +1,5 @@
-import {fromReal} from "./constants";
-import { fromReal as fromRealPoint, toReal as toRealPoint } from "./pointUtils";
+import { fromReal } from "./constants";
+import { fromReal as fromRealPoint } from "./pointUtils";
 
 let screen;
 export function setScreen(newScreen) {
@@ -20,13 +20,7 @@ export function drawBody(body) {
     let radius = fromReal(body.radius);
     if (radius < 1) radius = 1;
 
-    if (isPointOutOfBounds(center)) return;
-
-    screen.beginPath();
-    screen.fillStyle = body.color;
-    screen.moveTo(center.x, center.y);
-    screen.arc(center.x, center.y, radius, 0, 2 * Math.PI, false);
-    screen.fill();
+    drawPoint(body.center, body.color, radius);
 
     if (body.selected) {
         let distance = 10;
@@ -41,7 +35,13 @@ export function drawBody(body) {
         radius -= distance;
     }
 
-    drawPoint(toRealPoint(center), undefined, Math.min(radius * 0.1, 4));
+    if (body.type === "cannon") {
+        drawLine(body.center, body.vectorToPoint);
+    }
+
+    if (body.type !== "body") {
+        drawPoint(body.center, "black", Math.min(radius * 0.1, 4));
+    }
 }
 
 export function drawPoint(point, color = "black", size = 1) {

@@ -19,7 +19,7 @@ function Game() {
     this.computeSize();
 
     // Get the drawing context.
-    this.screen = this.canvas.getContext('2d');
+    this.screen = this.canvas.getContext("2d");
     this.screen.font = "10pt Arial";
 
     canvasDraw.setScreen(this.screen);

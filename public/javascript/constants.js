@@ -13,13 +13,13 @@ const selector = document.getElementById("measurement-selector");
 const options = [MilesPerPixel, KilometersPerPixel, EarthRadiiPerPixel];
 const textOptions = ["mi", "km", "earth-radii"];
 export function toDisplayUnit(pixels) {
-	const selectedIndex = selector.selectedIndex;
+    const selectedIndex = selector.selectedIndex;
 
-	return pixels * options[selectedIndex];
+    return pixels * options[selectedIndex];
 }
 
 export function getDisplayUnit() {
-	return textOptions[selector.selectedIndex];
+    return textOptions[selector.selectedIndex];
 }
 
 export function toReal(pixels) {
