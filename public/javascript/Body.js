@@ -2,6 +2,8 @@ import Vector from "./Vector.js";
 import * as constants from "./constants";
 import * as pointUtils from "./pointUtils";
 
+import * as movementUtils from "./movementUtils";
+
 let initNum = 0;
 export default class Body {
     constructor(game, center, isManual, options = {}) {
@@ -29,73 +31,20 @@ export default class Body {
 
         initNum++;
     }
-    acceleration(force) {
-        return force.length / this.mass;
-    }
-    speedNow(speed0, force) {
-        return speed0 + this.acceleration(force) * this.timeSinceUpdate;
-    }
-    distanceTravelled(speed) {
-        return speed * this.timeSinceUpdate;
-    }
-    shift(speed0, force) {
-        return {
-            x: this.distanceTravelled(this.speedNow(speed0, force)) * Math.cos(force.direction),
-            y: this.distanceTravelled(this.speedNow(speed0, force)) * Math.sin(force.direction)
-        };
-    }
+
     update(timeSinceUpdate) {
-        this.timeSinceUpdate = timeSinceUpdate;
+        const affectingObjects = this.game.attractors.concat(this.game.deflectors);
 
-        let vectors = this.game.attractors.concat(this.game.deflectors).map(object => {
-            let force = constants.G * this.mass * object.mass / Math.pow(pointUtils.distanceBetween(this.center, object.center), 2);
+        let { acceleration, delta } = movementUtils.moveObject(this,
+            timeSinceUpdate,
+            affectingObjects);
 
-            let vector = new Vector(
-                force,
-                Math.atan2(
-                    this.center.y - object.center.y,
-                    this.center.x - object.center.x
-                ) + Math.PI,
-                "N"
-            );
 
-            if (object.type === "deflector") {
-                vector = vector.opposite();
-            }
-
-            return vector;
-        });
-
-        let planetsVector = vectors.length > 0 ? vectors.reduce((vecA, vecB) => vecA.add(vecB)) : new Vector(0, 0, "N");
-        let projectedVectors = planetsVector.projectionOnto(this.speed);
-
-        let delta = {
-            a: this.shift(this.speed.length, projectedVectors.a),
-            b: this.shift(0, projectedVectors.b)
-        };
-
-        delta.x = delta.a.x + delta.b.x;
-        delta.y = delta.a.y + delta.b.y;
-
-        let previousSpeed = this.speed.length;
-        this.speed = new Vector(
-            pointUtils.distanceBetween({ x: 0, y: 0 }, delta) / timeSinceUpdate,
-            Math.atan2(
-                delta.y,
-                delta.x
-            ),
-            "m/s"
-        );
-
-        let currentAcceleration = this.speed.length - previousSpeed;
         let min = 255;
         let max = 360;
-        let hue = Math.min(currentAcceleration / max, 1) * (max - min) + min;
+        let hue = Math.min(acceleration / max, 1) * (max - min) + min;
         this.color = `hsl(${hue}, 100%, 70%)`;
 
-        this.isAlive = !pointUtils.willCollide(this.center, delta, this.game.attractors.concat(this.game.deflectors));
-
-        this.center.x += delta.x;
-        this.center.y += delta.y;
+        this.isAlive = !pointUtils.willCollide(this, delta, affectingObjects);
     }
 }

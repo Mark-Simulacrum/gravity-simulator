@@ -104,13 +104,17 @@ export function isBetween(pointA, betweenPoint, pointB) {
     return _isBetween(pointA, pointB) || _isBetween(pointB, pointA);
 }
 
-export function willCollide(originalCenter, bodyDelta, potentialColliders, callback) {
-    let shiftedBodyCenter = {
-        x: originalCenter.x + bodyDelta.x,
-        y: originalCenter.y + bodyDelta.y
+export function willCollide(body, bodyDelta, potentialColliders, callback) {
+    let originalCenter = {
+        x: body.center.x - bodyDelta.x,
+        y: body.center.y - bodyDelta.y
     };
 
+    let shiftedBodyCenter = body.center;
+
     return potentialColliders.some(potentialCollider => {
+        if (body === potentialCollider) return false;
+
         // The line containing the segment is intersecting the circle
         if (distanceToLine(originalCenter, shiftedBodyCenter, potentialCollider.center) <= potentialCollider.radius) {
             if (isPointInCircle(originalCenter, potentialCollider.center, potentialCollider.radius) ||
