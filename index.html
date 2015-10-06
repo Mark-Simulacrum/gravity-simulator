@@ -3555,6 +3555,10 @@ var _pointUtils = require("./pointUtils");
 
 var pointUtils = _interopRequireWildcard(_pointUtils);
 
+var _movementUtils = require("./movementUtils");
+
+var movementUtils = _interopRequireWildcard(_movementUtils);
+
 var initNum = 0;
 
 var Body = (function () {
@@ -3572,7 +3576,7 @@ var Body = (function () {
         this.id = initNum;
         this.originalCenter = { x: center.x, y: center.y };
 
-        this.mass = constants.EarthMass / 2;
+        this.mass = constants.EarthMass / 100;
         this.radius = this.mass / constants.EarthMass * constants.EarthRadius;
 
         var injectionVector = options.initialSpeed !== undefined ? options.initialSpeed : new _VectorJs2["default"](5500, 0, "m/s");
@@ -3585,73 +3589,21 @@ var Body = (function () {
     }
 
     _createClass(Body, [{
-        key: "acceleration",
-        value: function acceleration(force) {
-            return force.length / this.mass;
-        }
-    }, {
-        key: "speedNow",
-        value: function speedNow(speed0, force) {
-            return speed0 + this.acceleration(force) * this.timeSinceUpdate;
-        }
-    }, {
-        key: "distanceTravelled",
-        value: function distanceTravelled(speed) {
-            return speed * this.timeSinceUpdate;
-        }
-    }, {
-        key: "shift",
-        value: function shift(speed0, force) {
-            return {
-                x: this.distanceTravelled(this.speedNow(speed0, force)) * Math.cos(force.direction),
-                y: this.distanceTravelled(this.speedNow(speed0, force)) * Math.sin(force.direction)
-            };
-        }
-    }, {
         key: "update",
         value: function update(timeSinceUpdate) {
-            var _this = this;
+            var affectingObjects = this.game.attractors.concat(this.game.deflectors);
 
-            this.timeSinceUpdate = timeSinceUpdate;
+            var _movementUtils$moveObject = movementUtils.moveObject(this, timeSinceUpdate, affectingObjects);
 
-            var vectors = this.game.attractors.concat(this.game.deflectors).map(function (object) {
-                var force = constants.G * _this.mass * object.mass / Math.pow(pointUtils.distanceBetween(_this.center, object.center), 2);
+            var acceleration = _movementUtils$moveObject.acceleration;
+            var delta = _movementUtils$moveObject.delta;
 
-                var vector = new _VectorJs2["default"](force, Math.atan2(_this.center.y - object.center.y, _this.center.x - object.center.x) + Math.PI, "N");
-
-                if (object.type === "deflector") {
-                    vector = vector.opposite();
-                }
-
-                return vector;
-            });
-
-            var planetsVector = vectors.length > 0 ? vectors.reduce(function (vecA, vecB) {
-                return vecA.add(vecB);
-            }) : new _VectorJs2["default"](0, 0, "N");
-            var projectedVectors = planetsVector.projectionOnto(this.speed);
-
-            var delta = {
-                a: this.shift(this.speed.length, projectedVectors.a),
-                b: this.shift(0, projectedVectors.b)
-            };
-
-            delta.x = delta.a.x + delta.b.x;
-            delta.y = delta.a.y + delta.b.y;
-
-            var previousSpeed = this.speed.length;
-            this.speed = new _VectorJs2["default"](pointUtils.distanceBetween({ x: 0, y: 0 }, delta) / timeSinceUpdate, Math.atan2(delta.y, delta.x), "m/s");
-
-            var currentAcceleration = this.speed.length - previousSpeed;
             var min = 255;
             var max = 360;
-            var hue = Math.min(currentAcceleration / max, 1) * (max - min) + min;
+            var hue = Math.min(acceleration / max, 1) * (max - min) + min;
             this.color = "hsl(" + hue + ", 100%, 70%)";
 
-            this.isAlive = !pointUtils.willCollide(this.center, delta, this.game.attractors.concat(this.game.deflectors));
-
-            this.center.x += delta.x;
-            this.center.y += delta.y;
+            this.isAlive = !pointUtils.willCollide(this, delta, affectingObjects);
         }
     }]);
 
@@ -3660,7 +3612,7 @@ var Body = (function () {
 
 exports["default"] = Body;
 module.exports = exports["default"];
-},{"./Vector.js":22,"./constants":24,"./pointUtils":26}],20:[function(require,module,exports){
+},{"./Vector.js":22,"./constants":24,"./movementUtils":26,"./pointUtils":27}],20:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -4023,7 +3975,7 @@ function drawLineF(func, color, size, loopAll) {
         drawLine(screen, { x: 0, y: func(0) }, { x: screen.canvas.width, y: func(screen.canvas.width) }, color, size);
     }
 }
-},{"./constants":24,"./pointUtils":26}],24:[function(require,module,exports){
+},{"./constants":24,"./pointUtils":27}],24:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -4479,7 +4431,91 @@ window.addEventListener("DOMContentLoaded", function () {
 window.addEventListener("resize", function () {
     window.game.computeSize();
 });
-},{"./Attractor":18,"./Body":19,"./Cannon":20,"./Deflector":21,"./canvasDraw":23,"./constants":24,"./pointUtils":26,"lodash.find":1,"lodash.throttle":14,"mousetrap":17}],26:[function(require,module,exports){
+},{"./Attractor":18,"./Body":19,"./Cannon":20,"./Deflector":21,"./canvasDraw":23,"./constants":24,"./pointUtils":27,"lodash.find":1,"lodash.throttle":14,"mousetrap":17}],26:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.moveObject = moveObject;
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj["default"] = obj; return newObj; } }
+
+var _constants = require("./constants");
+
+var constants = _interopRequireWildcard(_constants);
+
+var _pointUtils = require("./pointUtils");
+
+var pointUtils = _interopRequireWildcard(_pointUtils);
+
+var _Vector = require("./Vector");
+
+var _Vector2 = _interopRequireDefault(_Vector);
+
+function acceleration(force, mass) {
+    return force.length / mass;
+}
+
+function speedNow(speed0, force, mass, elapsedTime) {
+    return speed0 + acceleration(force, mass) * elapsedTime;
+}
+
+function distanceTravelled(speed, elapsedTime) {
+    return speed * elapsedTime;
+}
+
+function shift(speed0, force, mass, elapsedTime) {
+    return {
+        x: distanceTravelled(speedNow(speed0, force, mass, elapsedTime), elapsedTime) * Math.cos(force.direction),
+        y: distanceTravelled(speedNow(speed0, force, mass, elapsedTime), elapsedTime) * Math.sin(force.direction)
+    };
+}
+
+function moveObject(object, elapsedTime, affectingObjects) {
+    var vectors = affectingObjects.map(function (affectingObject) {
+        if (affectingObject === object) {
+            return new _Vector2["default"](0, 0, "N");
+        }
+
+        var force = constants.G * object.mass * affectingObject.mass / Math.pow(pointUtils.distanceBetween(object.center, affectingObject.center), 2);
+
+        var vector = new _Vector2["default"](force, Math.atan2(object.center.y - affectingObject.center.y, object.center.x - affectingObject.center.x) + Math.PI, "N");
+
+        if (affectingObject.type === "deflector") {
+            vector = vector.opposite();
+        }
+
+        return vector;
+    });
+
+    var planetsVector = vectors.length > 0 ? vectors.reduce(function (vecA, vecB) {
+        return vecA.add(vecB);
+    }) : new _Vector2["default"](0, 0, "N");
+    var projectedVectors = planetsVector.projectionOnto(object.speed);
+
+    var delta = {
+        a: shift(object.speed.length, projectedVectors.a, object.mass, elapsedTime),
+        b: shift(0, projectedVectors.b, object.mass, elapsedTime)
+    };
+
+    delta.x = delta.a.x + delta.b.x;
+    delta.y = delta.a.y + delta.b.y;
+
+    var previousSpeed = object.speed.length;
+    object.speed = new _Vector2["default"](pointUtils.distanceBetween({ x: 0, y: 0 }, delta) / elapsedTime, Math.atan2(delta.y, delta.x), "m/s");
+
+    object.center.x += delta.x;
+    object.center.y += delta.y;
+
+    return {
+        acceleration: object.speed.length - previousSpeed,
+        delta: { x: delta.x, y: delta.y }
+    };
+}
+},{"./Vector":22,"./constants":24,"./pointUtils":27}],27:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -4611,13 +4647,17 @@ function isBetween(pointA, betweenPoint, pointB) {
     return _isBetween(pointA, pointB) || _isBetween(pointB, pointA);
 }
 
-function willCollide(originalCenter, bodyDelta, potentialColliders, callback) {
-    var shiftedBodyCenter = {
-        x: originalCenter.x + bodyDelta.x,
-        y: originalCenter.y + bodyDelta.y
+function willCollide(body, bodyDelta, potentialColliders, callback) {
+    var originalCenter = {
+        x: body.center.x - bodyDelta.x,
+        y: body.center.y - bodyDelta.y
     };
 
+    var shiftedBodyCenter = body.center;
+
     return potentialColliders.some(function (potentialCollider) {
+        if (body === potentialCollider) return false;
+
         // The line containing the segment is intersecting the circle
         if (distanceToLine(originalCenter, shiftedBodyCenter, potentialCollider.center) <= potentialCollider.radius) {
             if (isPointInCircle(originalCenter, potentialCollider.center, potentialCollider.radius) || isPointInCircle(shiftedBodyCenter, potentialCollider.center, potentialCollider.radius)) {
