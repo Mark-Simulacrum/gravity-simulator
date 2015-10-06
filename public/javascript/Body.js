@@ -16,7 +16,7 @@ export default class Body {
         this.id = initNum;
         this.originalCenter = { x: center.x, y: center.y };
 
-        this.mass = constants.EarthMass / 2;
+        this.mass = constants.EarthMass / 100;
         this.radius = this.mass / constants.EarthMass * constants.EarthRadius;
 
         let injectionVector = options.initialSpeed !== undefined ? options.initialSpeed : new Vector(
