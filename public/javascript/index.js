@@ -25,15 +25,14 @@ function Game() {
     canvasDraw.setScreen(this.screen);
 
     this.timesSinceUpdate = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-    this.deadBodies = [];
     this.bodies = [];
     this.attractors = [];
     this.deflectors = [];
     this.cannons = [];
     this.selectedObject = null;
 
-    let spawnBody = (point, isManual = false) => {
-        this.bodies.push(new Body(this, point, isManual));
+    let spawnBody = point => {
+        this.bodies.push(new Body(this, point));
     };
 
     let spawnCannon = (point) => {

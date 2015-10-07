@@ -20,7 +20,8 @@ export default class Cannon {
         this.rate = 50;
 
         this.shootPointDelta = null;
-        this.select(toPoint); // creates this.shootVector
+        this.shootVector = null;
+        this.select(toPoint);
 
         initNum++;
     }
@@ -37,7 +38,6 @@ export default class Cannon {
             this.game.bodies.push(new Body(
                 this.game,
                 { x: this.center.x, y: this.center.y },
-                true,
                 {
                     initialSpeed: this.shootVector.clone()
                 }
