@@ -33,7 +33,7 @@ function Game() {
     this.selectedObject = null;
 
     let spawnBody = (point, isManual = false) => {
-        this.addBody(new Body(this, point, isManual));
+        this.bodies.push(new Body(this, point, isManual));
     };
 
     let spawnCannon = (point) => {
@@ -207,48 +207,12 @@ Game.prototype.setInfoText = function (text) {
     this.infoElement.innerHTML = text;
 };
 
-Game.prototype.pointInAttractor = function (point) {
-    let distanceTo = attractor => Math.ceil(pointUtils.distanceBetween(point, attractor.center));
-
-    let minumumData = null;
-
-    this.attractors.forEach(attractor => {
-        let distance = distanceTo(attractor);
-        if (minumumData === null || distance < minumumData.distance) {
-            minumumData = { distance, attractor };
-        }
-    });
-
-    if (minumumData && minumumData.attractor.radius >= minumumData.distance) {
-        return minumumData;
-    }
-
-    return null;
-};
-
 Game.prototype.computeSize = function() {
     this.canvas.width = document.body.clientWidth;
     this.canvas.height = document.body.clientHeight;
 
     this.size = { x: this.canvas.width, y: this.canvas.height };
     this.realSize = { x: constants.toReal(this.size.x), y: constants.toReal(this.size.y) };
-};
-
-Game.prototype.cannonNearPoint = function (point) {
-    let distanceTo = (cannon) => Math.ceil(pointUtils.distanceBetween(point, cannon.center));
-
-    let distances = this.cannons.map(cannon => distanceTo(cannon));
-
-    let minumumDistance = Math.min.apply(Math, distances);
-
-    let returnVal = null;
-    this.cannons.some(cannon => {
-        if (distanceTo(cannon) === minumumDistance) {
-            returnVal = { cannon, distance: minumumDistance };
-        }
-    });
-
-    return returnVal;
 };
 
 Game.prototype.update = function(now) {
@@ -295,10 +259,6 @@ Game.prototype.update = function(now) {
 Game.prototype.draw = function() {
     for (let object of (this.bodies.concat(this.attractors, this.deflectors, this.cannons): Array))
         canvasDraw.drawBody(object);
-};
-
-Game.prototype.addBody = function(body) {
-    this.bodies.push(body);
 };
 
 window.addEventListener("DOMContentLoaded", () => {

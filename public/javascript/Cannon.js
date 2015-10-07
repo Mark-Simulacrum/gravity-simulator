@@ -36,7 +36,8 @@ export default class Cannon {
     update() {
         if (this.updates <= 0) {
             this.updates = this.rate;
-            this.game.addBody(new Body(
+
+            this.game.bodies.push(new Body(
                 this.game,
                 { x: this.center.x, y: this.center.y },
                 true,
