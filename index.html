@@ -3562,28 +3562,22 @@ var movementUtils = _interopRequireWildcard(_movementUtils);
 var initNum = 0;
 
 var Body = (function () {
-    function Body(game, center, isManual) {
-        var options = arguments.length <= 3 || arguments[3] === undefined ? {} : arguments[3];
+    function Body(game, center) {
+        var options = arguments.length <= 2 || arguments[2] === undefined ? {} : arguments[2];
 
         _classCallCheck(this, Body);
 
         this.game = game;
         this.center = center;
-        this.isManual = isManual;
 
         this.isAlive = true;
         this.type = "body";
         this.id = initNum;
-        this.originalCenter = { x: center.x, y: center.y };
 
         this.mass = constants.EarthMass / 100;
         this.radius = this.mass / constants.EarthMass * constants.EarthRadius;
 
-        var injectionVector = options.initialSpeed !== undefined ? options.initialSpeed : new _VectorJs2["default"](5500, 0, "m/s");
-
-        this.startSpeed = injectionVector.length;
-        this.speed = injectionVector;
-        this.timeSinceUpdate = 0;
+        this.speed = options.initialSpeed;
 
         initNum++;
     }
@@ -3661,7 +3655,9 @@ var Cannon = (function () {
         this.updates = 0;
         this.rate = 50;
 
-        this.select(toPoint); // creates this.shootVector
+        this.shootPointDelta = null;
+        this.shootVector = null;
+        this.select(toPoint);
 
         initNum++;
     }
@@ -3669,27 +3665,20 @@ var Cannon = (function () {
     _createClass(Cannon, [{
         key: "vectorToPoint",
         value: function vectorToPoint() {
-            var scaledVector = this.shootVector.scale(10e3);
-
-            var vectorToPoint = {
-                x: this.center.x + scaledVector.getDeltaX(),
-                y: this.center.y + scaledVector.getDeltaY()
+            return {
+                x: this.center.x + this.shootPointDelta.x,
+                y: this.center.y + this.shootPointDelta.y
             };
-
-            return vectorToPoint;
         }
     }, {
         key: "update",
         value: function update() {
-            if (this.updates <= 0) {
+            if (this.updates <= 0 || this.updates > this.rate) {
                 this.updates = this.rate;
-                this.game.addBody(new _Body2["default"](this.game, { x: this.center.x, y: this.center.y }, true, {
+
+                this.game.bodies.push(new _Body2["default"](this.game, { x: this.center.x, y: this.center.y }, {
                     initialSpeed: this.shootVector.clone()
                 }));
-            }
-
-            if (this.updates > this.rate) {
-                this.updates = this.rate;
             }
 
             canvasDraw.drawLine(this.center, this.vectorToPoint());
@@ -3699,8 +3688,13 @@ var Cannon = (function () {
     }, {
         key: "select",
         value: function select(point) {
-            this.shootVector = new _Vector2["default"](7000, //pointUtils.distanceBetween(this.center, point),
-            point === undefined ? Math.PI : Math.atan2(this.center.y - point.y, this.center.x - point.x) + Math.PI, "m/s");
+            this.shootVector = new _Vector2["default"](7000, point === undefined ? Math.PI : Math.atan2(this.center.y - point.y, this.center.x - point.x) + Math.PI, "m/s");
+
+            var scaledVector = this.shootVector.scale(10e3);
+            this.shootPointDelta = {
+                x: scaledVector.getDeltaX(),
+                y: scaledVector.getDeltaY()
+            };
         }
     }, {
         key: "deselect",
@@ -4091,7 +4085,6 @@ function Game() {
     canvasDraw.setScreen(this.screen);
 
     this.timesSinceUpdate = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-    this.deadBodies = [];
     this.bodies = [];
     this.attractors = [];
     this.deflectors = [];
@@ -4099,9 +4092,7 @@ function Game() {
     this.selectedObject = null;
 
     var spawnBody = function spawnBody(point) {
-        var isManual = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
-
-        _this.addBody(new _Body2["default"](_this, point, isManual));
+        _this.bodies.push(new _Body2["default"](_this, point));
     };
 
     var spawnCannon = function spawnCannon(point) {
@@ -4292,54 +4283,12 @@ Game.prototype.setInfoText = function (text) {
     this.infoElement.innerHTML = text;
 };
 
-Game.prototype.pointInAttractor = function (point) {
-    var distanceTo = function distanceTo(attractor) {
-        return Math.ceil(pointUtils.distanceBetween(point, attractor.center));
-    };
-
-    var minumumData = null;
-
-    this.attractors.forEach(function (attractor) {
-        var distance = distanceTo(attractor);
-        if (minumumData === null || distance < minumumData.distance) {
-            minumumData = { distance: distance, attractor: attractor };
-        }
-    });
-
-    if (minumumData && minumumData.attractor.radius >= minumumData.distance) {
-        return minumumData;
-    }
-
-    return null;
-};
-
 Game.prototype.computeSize = function () {
     this.canvas.width = document.body.clientWidth;
     this.canvas.height = document.body.clientHeight;
 
     this.size = { x: this.canvas.width, y: this.canvas.height };
     this.realSize = { x: constants.toReal(this.size.x), y: constants.toReal(this.size.y) };
-};
-
-Game.prototype.cannonNearPoint = function (point) {
-    var distanceTo = function distanceTo(cannon) {
-        return Math.ceil(pointUtils.distanceBetween(point, cannon.center));
-    };
-
-    var distances = this.cannons.map(function (cannon) {
-        return distanceTo(cannon);
-    });
-
-    var minumumDistance = Math.min.apply(Math, distances);
-
-    var returnVal = null;
-    this.cannons.some(function (cannon) {
-        if (distanceTo(cannon) === minumumDistance) {
-            returnVal = { cannon: cannon, distance: minumumDistance };
-        }
-    });
-
-    return returnVal;
 };
 
 Game.prototype.update = function (now) {
@@ -4408,10 +4357,6 @@ Game.prototype.draw = function () {
         var object = _arr4[_i4];
         canvasDraw.drawBody(object);
     }
-};
-
-Game.prototype.addBody = function (body) {
-    this.bodies.push(body);
 };
 
 window.addEventListener("DOMContentLoaded", function () {
