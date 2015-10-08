@@ -17,7 +17,11 @@ export default class Body {
         this.mass = constants.EarthMass / 100;
         this.radius = this.mass / constants.EarthMass * constants.EarthRadius;
 
-        this.speed = options.initialSpeed;
+        this.speed = options.initialSpeed || new Vector(
+            7000,
+            Math.PI,
+            "m/s"
+        );
 
         initNum++;
     }
